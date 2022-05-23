@@ -1,0 +1,9 @@
+max_width = 100
+blank_lines_lower_bound = 1
+fn_args_layout = "Vertical"
+imports_layout = "Vertical"
+match_block_trailing_comma = true
+trailing_comma = "Always"
+tab_spaces = 2
+hard_tabs = false
+newline_style = "unix"
