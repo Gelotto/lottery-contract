@@ -8,4 +8,10 @@ pub enum ContractError {
 
   #[error("NotAuthorized")]
   NotAuthorized {},
+
+  #[error("NotActive")]
+  NotActive {},
+
+  #[error("AlreadyEnded")]
+  AlreadyEnded {},
 }

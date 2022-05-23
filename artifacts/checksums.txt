@@ -1,0 +1,1 @@
+98f14daf5a662c5fbe92ea14a67d080b0e1b995f2fcc9c488329a591e06c2e3e  cw_gelotto_game.wasm
