@@ -1,9 +1,9 @@
 [package]
-name = "cw-contract"
+name = "cw-gelotto-game"
 version = "0.10.0"
 edition = "2018"
 license = "Apache-2.0"
-description = "Simple CosmWasm contract"
+description = "Gelotto CosmWasm Game Contract"
 repository = "https://github.com/dgabriele/cw-contract.git"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

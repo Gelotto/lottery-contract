@@ -384,7 +384,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-contract"
+name = "cw-gelotto-game"
 version = "0.10.0"
 dependencies = [
  "cosmwasm-schema",
