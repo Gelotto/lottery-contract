@@ -1,10 +1,10 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TextResponse};
+use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::state::{State, STATE};
 
 const CONTRACT_NAME: &str = "crates.io:cw-gelotto-game";
