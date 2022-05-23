@@ -1,1 +1,0 @@
-7dee84f47443b32bfaa6eb4ba1d3daf0f9524320c21ef02bfc224a3d0034f340  cw_contract.wasm
