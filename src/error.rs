@@ -14,4 +14,10 @@ pub enum ContractError {
 
   #[error("AlreadyEnded")]
   AlreadyEnded {},
+
+  #[error("StateLoadError")]
+  StateLoadError {},
+
+  #[error("StateSaveError")]
+  StateSaveError {},
 }

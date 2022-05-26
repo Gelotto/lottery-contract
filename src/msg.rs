@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct InstantiateMsg {
   pub id: String,
   pub ends_after: u64,
-  pub winner_count: u32,
+  pub winner_count: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
