@@ -35,8 +35,6 @@ thiserror = "1.0.23"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 sha2 = "0.10.2"
 base64ct = "1.5.0"
-hex-literal = "0.3.4"
-hex = "0.4"
 rand_core = "0.6.3"
 rand_seeder = "0.2.3"
 rand_pcg = "0.3.1"
