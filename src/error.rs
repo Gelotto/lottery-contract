@@ -6,6 +6,12 @@ pub enum ContractError {
   #[error("{0}")]
   Std(#[from] StdError),
 
+  #[error("StateLoadError")]
+  StateLoadError {},
+
+  #[error("StateSaveError")]
+  StateSaveError {},
+
   #[error("NotAuthorized")]
   NotAuthorized {},
 
@@ -15,9 +21,9 @@ pub enum ContractError {
   #[error("AlreadyEnded")]
   AlreadyEnded {},
 
-  #[error("StateLoadError")]
-  StateLoadError {},
+  #[error("NoWinners")]
+  NoWinners {},
 
-  #[error("StateSaveError")]
-  StateSaveError {},
+  #[error("InvalidSeed")]
+  InvalidSeed { seed: String },
 }

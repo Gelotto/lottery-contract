@@ -1,6 +1,6 @@
 pub mod contract;
-mod error;
+pub mod error;
+pub mod execute;
 pub mod msg;
-pub mod mutations;
-mod random;
+pub mod random;
 pub mod state;

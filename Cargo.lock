@@ -403,7 +403,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-gelotto-game"
+name = "cw-gelotto-ibc-lottery-smart-contract"
 version = "0.10.0"
 dependencies = [
  "base64ct",
@@ -413,9 +413,6 @@ dependencies = [
  "cosmwasm-vm",
  "cw-storage-plus",
  "cw2",
- "rand_core 0.6.3",
- "rand_pcg",
- "rand_seeder",
  "schemars",
  "serde",
  "sha2 0.10.2",
@@ -1066,24 +1063,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
 dependencies = [
  "getrandom 0.2.6",
-]
-
-[[package]]
-name = "rand_pcg"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59cad018caf63deb318e5a4586d99a24424a364f40f1e5778c29aca23f4fc73e"
-dependencies = [
- "rand_core 0.6.3",
-]
-
-[[package]]
-name = "rand_seeder"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf2890aaef0aa82719a50e808de264f9484b74b442e1a3a0e5ee38243ac40bdb"
-dependencies = [
- "rand_core 0.6.3",
 ]
 
 [[package]]

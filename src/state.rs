@@ -30,7 +30,7 @@ pub struct Game {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TicketOrder {
   pub owner: Addr,
-  pub count: u16,
+  pub count: u32,
   pub cum_count: u64,
 }
 

@@ -1,10 +1,12 @@
 use crate::error::ContractError;
 use crate::random;
+use crate::random::pcg64_from_game_seed;
 use crate::state::{Game, GameStatus, TicketOrder, GAME, ORDERS, WINNERS};
 use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, Response, Timestamp};
-use rand_core::RngCore;
-use rand_pcg::Pcg64;
-use rand_seeder::Seeder;
+// use rand_core::RngCore;
+// use rand_pcg::Pcg64;
+// use rand_seeder::Seeder;
+use std::collections::HashSet;
 
 /// Anyone can end a game so long as (1) the game hasn't already ended and (2)
 /// the creation time of the block is later than the game's `ends_after`
@@ -63,34 +65,38 @@ fn select_winners(
   game: &Game,
   orders: &Vec<TicketOrder>,
 ) -> Result<Vec<Addr>, ContractError> {
+  let mut rng = pcg64_from_game_seed(&game.seed)?;
   let n_winners = std::cmp::min(game.winner_count, game.player_count) as usize;
-  let mut winners = Vec::with_capacity(n_winners);
-  let mut rng: Pcg64 = Seeder::from(&game.seed).make_rng();
+  let n_tickets_sold = orders[orders.len() - 1].cum_count;
+  let mut visited: HashSet<Addr> = HashSet::with_capacity(n_winners);
+  let mut winners: Vec<Addr> = Vec::with_capacity(n_winners);
   while winners.len() < n_winners {
-    let x = rng.next_u64() % (orders.len() as u64);
-    let slice = &orders[..];
-    let winner: Addr = binary_search(slice, orders.len(), x);
-    winners.push(winner);
+    let x = rng.next_u64() % n_tickets_sold;
+    let winner: &TicketOrder = bisect(&orders[..], orders.len(), x);
+    if !visited.contains(&winner.owner) {
+      visited.insert(winner.owner.clone());
+      winners.push(winner.owner.clone());
+    }
   }
   Ok(winners)
 }
 
 /// Return the owner address of the ticket order whose interval contains x.
-fn binary_search(
+fn bisect(
   orders: &[TicketOrder],
-  len: usize,
+  n: usize, // == size of `orders` slice
   x: u64,
-) -> Addr {
-  let i = len / 2;
+) -> &TicketOrder {
+  let i = n / 2;
   let order = &orders[i];
-  if i > 0 {
-    let prev_cum_count = orders[i - 1].cum_count;
-    if x < prev_cum_count {
-      return binary_search(&orders[..i], i, x);
-    }
+  let lower = order.cum_count - order.count as u64;
+  let upper = order.cum_count;
+  if x < lower {
+    // go left
+    return bisect(&orders[..i], i, x);
+  } else if x >= upper {
+    // go right
+    return bisect(&orders[i..], n - i, x);
   }
-  if x >= order.cum_count {
-    return binary_search(&orders[i + 1..len], len - i, x);
-  }
-  order.owner.clone()
+  &order
 }

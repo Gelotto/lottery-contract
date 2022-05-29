@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "ends_after",
+    "id",
+    "winner_count"
+  ],
+  "properties": {
+    "ends_after": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "id": {
+      "type": "string"
+    },
+    "winner_count": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  }
+}

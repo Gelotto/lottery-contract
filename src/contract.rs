@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use crate::error::ContractError;
+use crate::execute;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
-use crate::mutations::end_game;
 use crate::state;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
@@ -35,6 +35,6 @@ pub fn execute(
   msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
   match msg {
-    ExecuteMsg::EndGame {} => end_game::execute(deps, env, info),
+    ExecuteMsg::EndGame {} => execute::end_game(deps, env, info),
   }
 }

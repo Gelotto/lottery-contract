@@ -1,0 +1,9 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GameStatus",
+  "type": "string",
+  "enum": [
+    "a_c_t_i_v_e",
+    "e_n_d_e_d"
+  ]
+}

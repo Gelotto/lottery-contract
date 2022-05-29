@@ -1,1 +1,2 @@
 7cf6c27cc7c76c8c527e792d1c83c4354b0c286d6f4f08b8818e833e745ad940  ./target/wasm32-unknown-unknown/release/cw_gelotto_game.wasm
+cf367a7fe5b1e758b0e091424588fb27f5efff9b392c20724f6650601aa1c7a2  ./target/wasm32-unknown-unknown/release/cw_gelotto_ibc_lottery_smart_contract.wasm
