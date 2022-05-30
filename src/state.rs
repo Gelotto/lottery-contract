@@ -2,8 +2,8 @@ use crate::error::ContractError;
 use crate::msg::InstantiateMsg;
 use crate::random;
 use cosmwasm_std::Addr;
-use cosmwasm_std::{DepsMut, Env, MessageInfo};
-use cw_storage_plus::Item;
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Timestamp};
+use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -34,9 +34,15 @@ pub struct TicketOrder {
   pub cum_count: u64,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Player {
+  pub ticket_count: u32,
+}
+
 pub const GAME: Item<Game> = Item::new("game");
 pub const ORDERS: Item<Vec<TicketOrder>> = Item::new("orders");
 pub const WINNERS: Item<Vec<Addr>> = Item::new("winners");
+pub const PLAYERS: Map<Addr, Player> = Map::new("players");
 
 /// Initialize contract state data.
 pub fn initialize(
@@ -62,4 +68,13 @@ pub fn initialize(
   WINNERS.save(deps.storage, &vec![])?;
 
   Ok(())
+}
+
+impl Game {
+  pub fn has_ended(
+    &self,
+    time: Timestamp,
+  ) -> bool {
+    time.nanos() > self.ends_after
+  }
 }

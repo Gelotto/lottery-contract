@@ -36,5 +36,6 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
   match msg {
     ExecuteMsg::EndGame {} => execute::end_game(deps, env, info),
+    ExecuteMsg::BuyTickets { ticket_count } => execute::buy_tickets(deps, env, info, ticket_count),
   }
 }

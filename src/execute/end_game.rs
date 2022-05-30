@@ -3,15 +3,12 @@ use crate::random;
 use crate::random::pcg64_from_game_seed;
 use crate::state::{Game, GameStatus, TicketOrder, GAME, ORDERS, WINNERS};
 use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, Response, Timestamp};
-// use rand_core::RngCore;
-// use rand_pcg::Pcg64;
-// use rand_seeder::Seeder;
 use std::collections::HashSet;
 
 /// Anyone can end a game so long as (1) the game hasn't already ended and (2)
 /// the creation time of the block is later than the game's `ends_after`
 /// timestamp (stored as nanoseconds).
-pub fn execute(
+pub fn execute_end_game(
   deps: DepsMut,
   env: Env,
   info: MessageInfo,
@@ -55,7 +52,7 @@ fn update_game_state(
   time: &Timestamp,
 ) {
   game.status = GameStatus::ENDED;
-  game.seed = random::seed::finalize(game, sender, time);
+  game.seed = random::seed::finalize(game, sender);
   game.ended_at = Some(time.nanos());
   game.ended_by = Some(sender.clone());
 }
