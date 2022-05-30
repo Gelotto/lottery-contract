@@ -1,15 +1,15 @@
 use crate::state::Game;
 use base64ct::{Base64, Encoding};
-use cosmwasm_std::{Addr, Timestamp};
+use cosmwasm_std::Addr;
 use sha2::{Digest, Sha256};
 
 pub fn init(
   game_id: &String,
-  time: &Timestamp,
+  block_height: u64,
 ) -> String {
   let mut sha256 = Sha256::new();
   sha256.update(game_id.as_bytes());
-  sha256.update(time.nanos().to_le_bytes());
+  sha256.update(block_height.to_le_bytes());
   let hash = sha256.finalize();
   Base64::encode_string(&hash)
 }
@@ -18,11 +18,13 @@ pub fn update(
   game: &Game,
   owner: &Addr,
   ticket_count: u32,
+  block_height: u64,
 ) -> String {
   let mut sha256 = Sha256::new();
   sha256.update(game.seed.as_bytes());
   sha256.update(owner.as_bytes());
   sha256.update(ticket_count.to_le_bytes());
+  sha256.update(block_height.to_le_bytes());
   let hash = sha256.finalize();
   Base64::encode_string(&hash)
 }
@@ -30,10 +32,12 @@ pub fn update(
 pub fn finalize(
   game: &Game,
   sender: &Addr,
+  block_height: u64,
 ) -> String {
   let mut sha256 = Sha256::new();
   sha256.update(game.seed.as_bytes());
   sha256.update(sender.as_bytes());
+  sha256.update(block_height.to_le_bytes());
   let hash = sha256.finalize();
   Base64::encode_string(&hash)
 }

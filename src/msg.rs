@@ -6,6 +6,7 @@ pub struct InstantiateMsg {
   pub id: String,
   pub ends_after: u64,
   pub winner_count: u64,
+  pub denom: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -13,6 +14,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
   EndGame {},
   BuyTickets { ticket_count: u32 },
+  ClaimPrize {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

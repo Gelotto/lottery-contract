@@ -37,5 +37,6 @@ pub fn execute(
   match msg {
     ExecuteMsg::EndGame {} => execute::end_game(deps, env, info),
     ExecuteMsg::BuyTickets { ticket_count } => execute::buy_tickets(deps, env, info, ticket_count),
+    ExecuteMsg::ClaimPrize {} => execute::claim_prize(deps, env, info),
   }
 }

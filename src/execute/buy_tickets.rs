@@ -23,19 +23,22 @@ pub fn execute_buy_tickets(
         Ok(player)
       },
     )?;
-  } else {
-    // insert Player with initial ticket count
+  }
+  // insert Player with initial ticket count
+  else {
     PLAYERS.save(deps.storage, owner.clone(), &Player { ticket_count })?;
+
     // update game's player count and PRNG seed
     GAME.update(deps.storage, |mut game| -> Result<_, ContractError> {
       if game.has_ended(env.block.time) {
         return Err(ContractError::AlreadyEnded {});
       }
-      game.seed = random::seed::update(&game, &owner, ticket_count);
+      game.seed = random::seed::update(&game, &owner, ticket_count, env.block.height);
       game.player_count += 1;
       Ok(game)
     })?;
   }
+
   // add a TicketOrder to specialized `ORDERS` vec, used in `end_game`
   // when performing binary search to find winners.
   ORDERS.update(

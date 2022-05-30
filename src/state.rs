@@ -1,8 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::InstantiateMsg;
 use crate::random;
-use cosmwasm_std::Addr;
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Timestamp};
+use cosmwasm_std::{Addr, Coin, DepsMut, Env, MessageInfo, Timestamp};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -24,6 +23,7 @@ pub struct Game {
   pub ended_at: Option<u64>,
   pub ended_by: Option<Addr>,
   pub player_count: u64,
+  pub denom: String,
   pub seed: String,
 }
 
@@ -39,10 +39,18 @@ pub struct Player {
   pub ticket_count: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Winner {
+  pub player: Addr,
+  pub position: u64,
+  pub has_claimed: bool,
+}
+
 pub const GAME: Item<Game> = Item::new("game");
 pub const ORDERS: Item<Vec<TicketOrder>> = Item::new("orders");
-pub const WINNERS: Item<Vec<Addr>> = Item::new("winners");
+pub const WINNERS: Map<Addr, Winner> = Map::new("winners");
 pub const PLAYERS: Map<Addr, Player> = Map::new("players");
+pub const PRIZE: Item<Coin> = Item::new("prize");
 
 /// Initialize contract state data.
 pub fn initialize(
@@ -52,12 +60,13 @@ pub fn initialize(
   msg: &InstantiateMsg,
 ) -> Result<(), ContractError> {
   let game = Game {
-    seed: random::seed::init(&msg.id, &env.block.time),
+    seed: random::seed::init(&msg.id, env.block.height),
     owner: info.sender.clone(),
     status: GameStatus::ACTIVE,
     id: msg.id.clone(),
     ends_after: msg.ends_after,
     winner_count: msg.winner_count,
+    denom: msg.denom.clone(),
     player_count: 0,
     ended_at: None,
     ended_by: None,
@@ -65,7 +74,7 @@ pub fn initialize(
 
   GAME.save(deps.storage, &game)?;
   ORDERS.save(deps.storage, &vec![])?;
-  WINNERS.save(deps.storage, &vec![])?;
+  PRIZE.save(deps.storage, &Coin::new(0, msg.denom.clone()))?;
 
   Ok(())
 }
