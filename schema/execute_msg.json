@@ -13,6 +13,40 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "buy_tickets"
+      ],
+      "properties": {
+        "buy_tickets": {
+          "type": "object",
+          "required": [
+            "ticket_count"
+          ],
+          "properties": {
+            "ticket_count": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "claim_prize"
+      ],
+      "properties": {
+        "claim_prize": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }
