@@ -58,5 +58,5 @@ pub fn execute_buy_tickets(
     },
   )?;
 
-  Ok(Response::new().add_attribute("method", "buy_tickets"))
+  Ok(Response::new().add_attribute("action", "buy_tickets"))
 }

@@ -42,7 +42,7 @@ pub fn execute_end_game(
   Ok(
     Response::new()
       .add_message(CosmosMsg::Bank(BankMsg::Send {
-        to_address: info.sender.clone().into(),
+        to_address: info.sender.clone().into(), // TODO: replace with Gelotto address
         amount: vec![Coin::new(gelotto_amount.into(), game.denom.clone())],
       }))
       .add_attributes(vec![

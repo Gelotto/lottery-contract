@@ -21,7 +21,7 @@ pub fn instantiate(
   state::initialize(deps, &env, &info, &msg)?;
   Ok(
     Response::new()
-      .add_attribute("method", "instantiate")
+      .add_attribute("action", "instantiate")
       .add_attribute("owner", info.sender)
       .add_attribute("id", msg.id),
   )
