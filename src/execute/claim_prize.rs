@@ -1,12 +1,19 @@
 use crate::error::ContractError;
-use crate::state::{PRIZE, WINNERS};
+use crate::state::{Game, GAME, PRIZE, WINNERS};
 use cosmwasm_std::{attr, BankMsg, CosmosMsg, DepsMut, Env, MessageInfo, Response};
 
 pub fn execute_claim_prize(
   deps: DepsMut,
-  _env: Env,
+  env: Env,
   info: MessageInfo,
 ) -> Result<Response, ContractError> {
+  let game: Game = GAME.load(deps.storage)?;
+
+  // abort if the game is still active
+  if !game.has_ended(env.block.time) {
+    return Err(ContractError::NotAuthorized {});
+  }
+
   if let Some(mut winner) = WINNERS.may_load(deps.storage, info.sender.clone())? {
     // don't let the player claim multiple times
     if winner.has_claimed {

@@ -1,3 +1,4 @@
+use crate::constants::GELOTTO_GAME_FUND_ADDR;
 use crate::error::ContractError;
 use crate::random;
 use crate::random::pcg64_from_game_seed;
@@ -42,7 +43,7 @@ pub fn execute_end_game(
   Ok(
     Response::new()
       .add_message(CosmosMsg::Bank(BankMsg::Send {
-        to_address: info.sender.clone().into(), // TODO: replace with Gelotto address
+        to_address: GELOTTO_GAME_FUND_ADDR.clone().into(),
         amount: vec![Coin::new(gelotto_amount.into(), game.denom.clone())],
       }))
       .add_attributes(vec![
