@@ -1,0 +1,42 @@
+#!/usr/bin/bash
+# starts a validator running in a docker container
+# 
+# Juno ships with an unsafe seed user in dev mode when you run the prebuilt
+# docker container below, or one of the options that uses docker-compose. You can
+# import this user into the CLI by using the mnemonic from the Juno repo, i.e.:
+# 
+# junod keys add <unsafe-test-key-name> --recover
+# 
+# When prompted, add the mnemonic:
+# 
+# clip hire initial neck maid actor venue client foam budget lock catalog sweet steak waste crater broccoli pipe steak sister coyote moment obvious choose
+# 
+# You will then be returned an address to use: juno16g2rahf5846rxzp3fwlswy08fz8ccuwk03k57y
+
+# name of docker container running the validator:
+container_name=juno_node_1
+
+rest_api_port=26656
+rpc_port=26657
+
+# build or start the validator container
+if [ -z "$(docker ps -a | grep $container_name)" ]; then
+    echo "running validator image with container name $container_name..."
+
+    docker run -it \
+      --name $container_name \
+      -p $rest_api_port:$rest_api_port \
+      -p $rpc_port:$rpc_port \
+      -e STAKE_TOKEN=ujunox \
+      -e UNSAFE_CORS=true \
+      ghcr.io/cosmoscontracts/juno:v6.0.0 \
+      ./setup_and_run.sh juno16g2rahf5846rxzp3fwlswy08fz8ccuwk03k57y
+
+    echo "To create an unsafe seed user by running: junod keys add <unsafe-test-key-name> --recover"
+    echo "Then enter the mnemonic:"
+    echo "clip hire initial neck maid actor venue client foam budget lock catalog sweet steak waste crater broccoli pipe steak sister coyote moment obvious choose"
+
+else
+    echo "starting validator docker container..."
+    docker start $container_name
+fi
