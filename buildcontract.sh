@@ -8,7 +8,7 @@ PARAM=$1
 NODE="--node https://rpc-juno.itastakers.com:443"
 CHAIN_ID=juno-1
 DENOM="ujuno"
-# --node https://rpc-juno.itastakers.com:443 --chain-id juno-1 --gas-prices 0.003ujuno --gas auto --gas-adjustment 1.3 --from newfortis
+
 ##########################################################################################
 
 # NODE="--node https://rpc.juno.giansalex.dev:443"
