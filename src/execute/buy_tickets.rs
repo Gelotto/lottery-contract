@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::random;
-use crate::state::{Player, TicketOrder, GAME, ORDERS, PLAYERS};
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+use crate::state::{Game, Player, TicketOrder, GAME, ORDERS, PLAYERS};
+use cosmwasm_std::{attr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response};
 
 pub fn execute_buy_tickets(
   deps: DepsMut,
@@ -39,6 +39,8 @@ pub fn execute_buy_tickets(
     })?;
   }
 
+  let game: Game = GAME.load(deps.storage)?;
+
   // add a TicketOrder to specialized `ORDERS` vec, used in `end_game`
   // when performing binary search to find winners.
   ORDERS.update(
@@ -58,5 +60,19 @@ pub fn execute_buy_tickets(
     },
   )?;
 
-  Ok(Response::new().add_attribute("action", "buy_tickets"))
+  // amount owed by player in exchange for the tickets:
+  let payment_amount = (ticket_count as u128) * game.ticket_price;
+
+  // transfer payment from player to the contract
+  Ok(
+    Response::new()
+      .add_message(CosmosMsg::Bank(BankMsg::Send {
+        to_address: env.contract.address.into_string(),
+        amount: vec![Coin::new(payment_amount, game.denom)],
+      }))
+      .add_attributes(vec![
+        attr("action", "buy_tickets"),
+        attr("to", info.sender.clone()),
+      ]),
+  )
 }
