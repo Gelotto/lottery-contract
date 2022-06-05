@@ -10,6 +10,7 @@
     "player_count",
     "seed",
     "status",
+    "ticket_price",
     "winner_count"
   ],
   "properties": {
@@ -55,6 +56,11 @@
     },
     "status": {
       "$ref": "#/definitions/GameStatus"
+    },
+    "ticket_price": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
     },
     "winner_count": {
       "type": "integer",
