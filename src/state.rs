@@ -24,6 +24,7 @@ pub struct Game {
   pub ended_by: Option<Addr>,
   pub player_count: u64,
   pub denom: String,
+  pub ticket_price: u128,
   pub seed: String,
 }
 
@@ -68,6 +69,7 @@ pub fn initialize(
     winner_count: msg.winner_count,
     denom: msg.denom.clone(),
     player_count: 0,
+    ticket_price: msg.ticket_price,
     ended_at: None,
     ended_by: None,
   };

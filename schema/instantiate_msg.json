@@ -6,6 +6,7 @@
     "denom",
     "ends_after",
     "id",
+    "ticket_price",
     "winner_count"
   ],
   "properties": {
@@ -19,6 +20,11 @@
     },
     "id": {
       "type": "string"
+    },
+    "ticket_price": {
+      "type": "integer",
+      "format": "uint128",
+      "minimum": 0.0
     },
     "winner_count": {
       "type": "integer",

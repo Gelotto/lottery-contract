@@ -7,6 +7,7 @@ pub struct InstantiateMsg {
   pub ends_after: u64,
   pub winner_count: u64,
   pub denom: String,
+  pub ticket_price: u128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
