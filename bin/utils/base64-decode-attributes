@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+
+import sys
+import json
+from base64 import decodebytes as b64_decode
+
+
+raw_json_str = sys.stdin.readline()
+
+if raw_json_str:
+    try:
+        data = json.loads(raw_json_str)
+    except ValueError as err:
+        exit(f"Error parsing JSON: {err}")
+
+    events = data.get("events", [])
+    for event in events:
+        event_attrs = event.get("attributes", [])
+        for attr in event_attrs:
+            attr["key"] = b64_decode(attr["key"].encode()).decode()
+            attr["value"] = b64_decode(attr["value"].encode()).decode()
+
+    print(json.dumps(data))

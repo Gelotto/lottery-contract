@@ -1,0 +1,69 @@
+#!/bin/bash
+
+WALLET="gelotto"
+RELEASE_DIR="./release"
+FILE_TX_HASH="tx_hash.txt"
+FILE_CONTRACT_ADDR="contract_addr.txt"
+FILE_CODE_ID="code_id.txt"
+CODE_ID=$(cat $RELEASE_DIR/$FILE_CODE_ID)
+
+NETWORK=$1
+INSTANTIATE_MSG="$2"
+
+case $NETWORK in
+  localnet)
+    NODE="http://localhost:26657"
+    DENOM=ujunox
+    CHAIN_ID=testing
+    ADMIN_ADDR="juno16g2rahf5846rxzp3fwlswy08fz8ccuwk03k57y"
+    ;;
+  testnet)
+    NODE="https://rpc.juno.giansalex.dev:443"
+    DENOM=ujunox
+    CHAIN_ID=uni-3
+    ADMIN_ADDR="juno1uu20jhzj2s4rklhs4z29dwltfatt5zj8dvqgnq"
+    ;;
+  mainnet)
+    NODE="https://rpc.juno.giansalex.dev:443"  # TODO: replace with correct value
+    DENOM=ujuno
+    CHAIN_ID=uni-3  # TODO: replace this with correct value
+    ADMIN_ADDR="juno1uu20jhzj2s4rklhs4z29dwltfatt5zj8dvqgnq"
+    ;;
+esac
+
+TXFLAG="--node $NODE --chain-id $CHAIN_ID --gas-prices 0.003$DENOM --gas auto --gas-adjustment 1.3"
+
+instantiate() { 
+    CMD="\
+      junod tx wasm instantiate $CODE_ID $INSTANTIATE_MSG \
+        --label 'gelotto-game' \
+        --admin $ADMIN_ADDR \
+        --from $WALLET \
+        --output json \
+        -y \
+        $TXFLAG \
+      "
+
+    echo "$CMD"
+
+    RESULT=$($CMD)
+
+    echo "$RESULT" | jq
+
+    TXHASH=$(echo "$RESULT" | jq -r '.txhash')
+    
+    echo $TXHASH >$RELEASE_DIR/$FILE_TX_HASH
+    echo "waiting for transaction to finalize..."
+
+    CONTRACT_ADDR=""
+    while [[ $CONTRACT_ADDR == "" ]]
+    do
+        sleep 3
+        CONTRACT_ADDR=$(junod query tx $TXHASH --output json 2>/dev/null | jq -r '.logs[0].events[0].attributes[0].value')
+    done
+
+    echo "contract address: $CONTRACT_ADDR"
+    echo $CONTRACT_ADDR >$RELEASE_DIR/$FILE_CONTRACT_ADDR
+}
+
+instantiate

@@ -1,4 +1,5 @@
 /target
+/release
 **/*.rs.bk
 *.iml
 *.sw[opn]

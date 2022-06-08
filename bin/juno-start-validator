@@ -39,4 +39,5 @@ if [ -z "$(docker ps -a | grep $container_name)" ]; then
 else
     echo "starting validator docker container..."
     docker start $container_name
+    docker logs "$container_name" -f --tail 500 
 fi

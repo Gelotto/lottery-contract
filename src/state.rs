@@ -1,10 +1,11 @@
 use crate::error::ContractError;
 use crate::msg::InstantiateMsg;
 use crate::random;
-use cosmwasm_std::{Addr, Coin, DepsMut, Env, MessageInfo, Timestamp};
+use cosmwasm_std::{Addr, Coin, DepsMut, Env, MessageInfo, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -69,14 +70,14 @@ pub fn initialize(
     winner_count: msg.winner_count,
     denom: msg.denom.clone(),
     player_count: 0,
-    ticket_price: msg.ticket_price,
+    ticket_price: Uint128::try_from(&msg.ticket_price[..])?.u128(),
     ended_at: None,
     ended_by: None,
   };
 
   GAME.save(deps.storage, &game)?;
-  ORDERS.save(deps.storage, &vec![])?;
-  PRIZE.save(deps.storage, &Coin::new(0, msg.denom.clone()))?;
+  // ORDERS.save(deps.storage, &vec![])?;
+  // PRIZE.save(deps.storage, &Coin::new(0, msg.denom.clone()))?;
 
   Ok(())
 }

@@ -30,7 +30,6 @@ FILE_UPLOADHASH="uploadtx.txt"
 FILE_CONTRACT_ADDR="contractaddr.txt"
 FILE_CODE_ID="code.txt"
 
-ADDR_ACHILLES="juno15fg4zvl8xgj3txslr56ztnyspf3jc7n9j44vhz"
 ADDR_GELOTTO="juno1uu20jhzj2s4rklhs4z29dwltfatt5zj8dvqgnq"
 ADDR_ADMIN=$ADDR_GELOTTO
 
