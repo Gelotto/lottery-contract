@@ -1,16 +1,22 @@
 use crate::error::ContractError;
 use crate::random;
 use crate::state::{Game, Player, TicketOrder, GAME, ORDERS, PLAYERS};
-use cosmwasm_std::{attr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{attr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128};
 
 pub fn execute_buy_tickets(
   deps: DepsMut,
   env: Env,
   info: MessageInfo,
   ticket_count: u32,
+  lucky_phrase: &Option<String>,
 ) -> Result<Response, ContractError> {
-  // owner of the pending TicketOrder:
+  let mut game: Game = GAME.load(deps.storage)?;
   let owner = info.sender.clone();
+
+  // abort if game over
+  if game.ended_at != None {
+    return Err(ContractError::AlreadyEnded {});
+  }
 
   if PLAYERS.has(deps.storage, owner.clone()) {
     // update player's ticket count
@@ -26,20 +32,15 @@ pub fn execute_buy_tickets(
   }
   // insert Player with initial ticket count
   else {
+    game.player_count += 1;
     PLAYERS.save(deps.storage, owner.clone(), &Player { ticket_count })?;
-
-    // update game's player count and PRNG seed
-    GAME.update(deps.storage, |mut game| -> Result<_, ContractError> {
-      if game.has_ended(env.block.time) {
-        return Err(ContractError::AlreadyEnded {});
-      }
-      game.seed = random::seed::update(&game, &owner, ticket_count, env.block.height);
-      game.player_count += 1;
-      Ok(game)
-    })?;
   }
 
-  let game: Game = GAME.load(deps.storage)?;
+  // update game's player count and PRNG seed
+  game.seed = random::seed::update(&game, &owner, ticket_count, env.block.height, &lucky_phrase);
+  game.ticket_count += ticket_count;
+
+  GAME.save(deps.storage, &game)?;
 
   // add a TicketOrder to specialized `ORDERS` vec, used in `end_game`
   // when performing binary search to find winners.
@@ -61,14 +62,14 @@ pub fn execute_buy_tickets(
   )?;
 
   // amount owed by player in exchange for the tickets:
-  let payment_amount = (ticket_count as u128) * game.ticket_price;
+  let payment_amount = game.ticket_price * Uint128::from(ticket_count);
 
   // transfer payment from player to the contract
   Ok(
     Response::new()
       .add_message(CosmosMsg::Bank(BankMsg::Send {
         to_address: env.contract.address.into_string(),
-        amount: vec![Coin::new(payment_amount, game.denom)],
+        amount: vec![Coin::new(payment_amount.u128(), game.denom)],
       }))
       .add_attributes(vec![
         attr("action", "buy_tickets"),

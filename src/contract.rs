@@ -1,10 +1,11 @@
 #[cfg(not(feature = "library"))]
 use crate::error::ContractError;
 use crate::execute;
-use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::query;
 use crate::state;
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "crates.io:cw-gelotto-game";
@@ -35,8 +36,27 @@ pub fn execute(
   msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
   match msg {
-    ExecuteMsg::EndGame {} => execute::end_game(deps, env, info),
-    ExecuteMsg::BuyTickets { ticket_count } => execute::buy_tickets(deps, env, info, ticket_count),
+    ExecuteMsg::EndGame { lucky_phrase } => execute::end_game(deps, env, info, &lucky_phrase),
+    ExecuteMsg::BuyTickets {
+      ticket_count,
+      lucky_phrase,
+    } => execute::buy_tickets(deps, env, info, ticket_count, &lucky_phrase),
     ExecuteMsg::ClaimPrize {} => execute::claim_prize(deps, env, info),
   }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(
+  deps: Deps,
+  _env: Env,
+  msg: QueryMsg,
+) -> StdResult<Binary> {
+  let result = match msg {
+    QueryMsg::GetWinners {} => to_binary(&query::get_winners(deps)?),
+    QueryMsg::GetPlayers {} => to_binary(&query::get_players(deps)?),
+    QueryMsg::GetPlayerTicketCount { addr } => {
+      to_binary(&query::get_player_ticket_count(deps, addr)?)
+    },
+  }?;
+  Ok(result)
 }

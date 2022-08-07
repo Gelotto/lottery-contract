@@ -19,13 +19,14 @@ pub struct Game {
   pub owner: Addr,
   pub id: String,
   pub status: GameStatus,
-  pub winner_count: u64,
-  pub ends_after: u64,
-  pub ended_at: Option<u64>,
+  pub winner_count: u32,
+  pub player_count: u32,
+  pub ends_after: Timestamp,
+  pub ended_at: Option<Timestamp>,
   pub ended_by: Option<Addr>,
-  pub player_count: u64,
   pub denom: String,
-  pub ticket_price: u128,
+  pub ticket_price: Uint128,
+  pub ticket_count: u32,
   pub seed: String,
 }
 
@@ -43,8 +44,9 @@ pub struct Player {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Winner {
-  pub player: Addr,
-  pub position: u64,
+  pub address: Addr,
+  pub position: u32,
+  pub ticket_count: u32,
   pub has_claimed: bool,
 }
 
@@ -66,18 +68,22 @@ pub fn initialize(
     owner: info.sender.clone(),
     status: GameStatus::ACTIVE,
     id: msg.id.clone(),
-    ends_after: msg.ends_after,
     winner_count: msg.winner_count,
+    ticket_price: Uint128::try_from(&msg.ticket_price[..])?,
+    ends_after: env
+      .block
+      .time
+      .plus_seconds(60 * msg.duration_minutes as u64),
     denom: msg.denom.clone(),
     player_count: 0,
-    ticket_price: Uint128::try_from(&msg.ticket_price[..])?.u128(),
+    ticket_count: 0,
     ended_at: None,
     ended_by: None,
   };
 
   GAME.save(deps.storage, &game)?;
-  // ORDERS.save(deps.storage, &vec![])?;
-  // PRIZE.save(deps.storage, &Coin::new(0, msg.denom.clone()))?;
+  ORDERS.save(deps.storage, &vec![])?;
+  PRIZE.save(deps.storage, &Coin::new(0, msg.denom.clone()))?;
 
   Ok(())
 }
@@ -87,6 +93,6 @@ impl Game {
     &self,
     time: Timestamp,
   ) -> bool {
-    time.nanos() > self.ends_after
+    time > self.ends_after
   }
 }

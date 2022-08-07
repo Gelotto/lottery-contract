@@ -1,20 +1,11 @@
+network ?= devnet  # network := devnet|mainnet|testnet
+sender ?= juno16g2rahf5846rxzp3fwlswy08fz8ccuwk03k57y
+wasm_filename ?= 
 build:
 	./bin/build
 
-build-unoptimized:
-	RUSTFLAGS='-C link-arg=-s' cargo wasm
-
-# deploy to local dev validator, assuming it's running
 deploy:
-	./bin/juno-deploy ./artifacts/cw_gelotto_ibc_lottery_smart_contract.wasm
-
-# deploy to testnet
-deploy-testnet:
-	./bin/juno-deploy ./artifacts/cw_gelotto_ibc_lottery_smart_contract.wasm testnet
-
-# deploy to mainnet
-deploy-mainnet:
-	./bin/juno-deploy ./artifacts/cw_gelotto_ibc_lottery_smart_contract.wasm mainnet
+	./bin/deploy ./artifacts/cw_gelotto_ibc_lottery_smart_contract.wasm $(network) $(sender)
 
 # instantiate last contract to be deployed
 instantiate:
@@ -28,5 +19,5 @@ test:
 schema:
 	cargo schema
 		
-start-validator:
-	./bin/juno-start-validator
+validator:
+	./bin/validator

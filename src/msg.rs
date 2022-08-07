@@ -1,11 +1,13 @@
+use crate::state::Winner;
+use cosmwasm_std::Addr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
   pub id: String,
-  pub ends_after: u64,
-  pub winner_count: u64,
+  pub duration_minutes: u32,
+  pub winner_count: u32,
   pub denom: String,
   pub ticket_price: String,
 }
@@ -13,11 +15,41 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-  EndGame {},
-  BuyTickets { ticket_count: u32 },
+  EndGame {
+    lucky_phrase: Option<String>,
+  },
+  BuyTickets {
+    ticket_count: u32,
+    lucky_phrase: Option<String>,
+  },
   ClaimPrize {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+  GetWinners {},
+  GetPlayers {},
+  GetPlayerTicketCount { addr: Addr },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct GetWinnersResponse {
+  pub winners: Vec<Winner>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct PlayerResponse {
+  pub address: Addr,
+  pub ticket_count: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct GetPlayersResponse {
+  pub players: Vec<PlayerResponse>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct GetTicketCountResponse {
+  pub ticket_count: u32,
+}

@@ -16,7 +16,8 @@
 # name of docker container running the validator:
 container_name=juno_node_1
 
-rest_api_port=26656
+rest_port=1317
+peer_port=26656
 rpc_port=26657
 
 # build or start the validator container
@@ -25,11 +26,12 @@ if [ -z "$(docker ps -a | grep $container_name)" ]; then
 
     docker run -it \
       --name $container_name \
-      -p $rest_api_port:$rest_api_port \
       -p $rpc_port:$rpc_port \
+      -p $rest_port:$rest_port \
+      -p $peer_port:$peer_port \
       -e STAKE_TOKEN=ujunox \
       -e UNSAFE_CORS=true \
-      ghcr.io/cosmoscontracts/juno:v6.0.0 \
+      ghcr.io/cosmoscontracts/juno:main \
       ./setup_and_run.sh juno16g2rahf5846rxzp3fwlswy08fz8ccuwk03k57y
 
     echo "To create an unsafe seed user by running: junod keys add <unsafe-test-key-name> --recover"
