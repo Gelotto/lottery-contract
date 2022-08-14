@@ -1,5 +1,6 @@
 /target
 /release
+/artifacts
 **/*.rs.bk
 *.iml
 *.sw[opn]
