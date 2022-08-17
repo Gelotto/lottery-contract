@@ -26,4 +26,7 @@ pub enum ContractError {
 
   #[error("InvalidSeed")]
   InvalidSeed { seed: String },
+
+  #[error("InvalidSeed")]
+  ExceededMaxTicketsPerPlayer {},
 }

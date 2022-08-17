@@ -3,15 +3,36 @@ use cosmwasm_std::Addr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// WinnerSelection defines the number of and manner in which winners are chosen
+/// when a game ends.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WinnerSelection {
+  Fixed {
+    // Ex: [60, 30, 10] means 60% to 1st place, 30% to 2nd, 10% to 3rd
+    pct_split: Vec<u8>,
+    winner_count: u32,
+  },
+  Percent {
+    // Ex: 2 means that max(1, 0.02 * player_count) win
+    pct_player_count: u8,
+  },
+}
+
+/// Initial contract state.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
   pub id: String,
+  pub name: Option<String>,
   pub duration_minutes: u32,
-  pub winner_count: u32,
   pub denom: String,
   pub ticket_price: String,
+  pub selection: WinnerSelection,
+  pub max_tickets_per_player: Option<u32>,
+  pub has_distinct_winners: bool,
 }
 
+/// Executable contract endpoints.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
@@ -25,6 +46,7 @@ pub enum ExecuteMsg {
   ClaimPrize {},
 }
 
+/// Custom contract query endpoints.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {

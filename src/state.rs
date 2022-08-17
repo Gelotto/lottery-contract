@@ -1,7 +1,7 @@
 use crate::error::ContractError;
-use crate::msg::InstantiateMsg;
+use crate::msg::{InstantiateMsg, WinnerSelection};
 use crate::random;
-use cosmwasm_std::{Addr, Coin, DepsMut, Env, MessageInfo, Timestamp, Uint128};
+use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -17,9 +17,10 @@ pub enum GameStatus {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Game {
   pub owner: Addr,
+  pub name: Option<String>,
   pub id: String,
   pub status: GameStatus,
-  pub winner_count: u32,
+  pub selection: WinnerSelection,
   pub player_count: u32,
   pub ends_after: Timestamp,
   pub ended_at: Option<Timestamp>,
@@ -28,6 +29,8 @@ pub struct Game {
   pub ticket_price: Uint128,
   pub ticket_count: u32,
   pub seed: String,
+  pub max_tickets_per_player: Option<u32>,
+  pub has_distinct_winners: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -48,13 +51,13 @@ pub struct Winner {
   pub position: u32,
   pub ticket_count: u32,
   pub has_claimed: bool,
+  pub claim_amount: Uint128,
 }
 
 pub const GAME: Item<Game> = Item::new("game");
 pub const ORDERS: Item<Vec<TicketOrder>> = Item::new("orders");
 pub const WINNERS: Map<Addr, Winner> = Map::new("winners");
 pub const PLAYERS: Map<Addr, Player> = Map::new("players");
-pub const PRIZE: Item<Coin> = Item::new("prize");
 
 /// Initialize contract state data.
 pub fn initialize(
@@ -65,16 +68,19 @@ pub fn initialize(
 ) -> Result<(), ContractError> {
   let game = Game {
     seed: random::seed::init(&msg.id, env.block.height),
+    name: msg.name.clone(),
     owner: info.sender.clone(),
     status: GameStatus::ACTIVE,
     id: msg.id.clone(),
-    winner_count: msg.winner_count,
+    selection: msg.selection.clone(),
     ticket_price: Uint128::try_from(&msg.ticket_price[..])?,
     ends_after: env
       .block
       .time
       .plus_seconds(60 * msg.duration_minutes as u64),
     denom: msg.denom.clone(),
+    max_tickets_per_player: msg.max_tickets_per_player.clone(),
+    has_distinct_winners: msg.has_distinct_winners,
     player_count: 0,
     ticket_count: 0,
     ended_at: None,
@@ -83,16 +89,30 @@ pub fn initialize(
 
   GAME.save(deps.storage, &game)?;
   ORDERS.save(deps.storage, &vec![])?;
-  PRIZE.save(deps.storage, &Coin::new(0, msg.denom.clone()))?;
 
   Ok(())
 }
 
 impl Game {
+  /// Has the game "ended". If so, it implies that no more tickets can be
+  /// ordered and winners have been chosen.
   pub fn has_ended(
     &self,
     time: Timestamp,
   ) -> bool {
     time > self.ends_after
+  }
+
+  /// Calculates the max number of players who are elegible to be counted as
+  /// winners when the game ends.
+  pub fn compute_winner_count(&self) -> u32 {
+    match self.selection {
+      WinnerSelection::Fixed { winner_count, .. } => {
+        std::cmp::min(self.player_count, winner_count as u32)
+      },
+      WinnerSelection::Percent { pct_player_count } => {
+        std::cmp::max(1, self.player_count * (pct_player_count as u32) / 100)
+      },
+    }
   }
 }

@@ -1,4 +1,5 @@
 /target
+/artifacts
 /release
 /artifacts
 **/*.rs.bk

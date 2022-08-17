@@ -3,6 +3,9 @@ use crate::random;
 use crate::state::{Game, Player, TicketOrder, GAME, ORDERS, PLAYERS};
 use cosmwasm_std::{attr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128};
 
+/// Buy tickets. Tickets can be bought even after the `ends_after` date. Only
+/// once the `end_game` endpoint has been executed does the game close to new
+/// ticket orders.
 pub fn execute_buy_tickets(
   deps: DepsMut,
   env: Env,
@@ -13,11 +16,6 @@ pub fn execute_buy_tickets(
   let mut game: Game = GAME.load(deps.storage)?;
   let owner = info.sender.clone();
 
-  // abort if game over
-  if game.ended_at != None {
-    return Err(ContractError::AlreadyEnded {});
-  }
-
   if PLAYERS.has(deps.storage, owner.clone()) {
     // update player's ticket count
     PLAYERS.update(
@@ -25,6 +23,12 @@ pub fn execute_buy_tickets(
       owner.clone(),
       |p| -> Result<_, ContractError> {
         let mut player = p.unwrap_or_else(|| Player { ticket_count: 0 });
+        if let Some(max_tickets_per_player) = game.max_tickets_per_player {
+          // don't let player buy more tickets than max allowed, unless N/A
+          if player.ticket_count + ticket_count > max_tickets_per_player {
+            return Err(ContractError::ExceededMaxTicketsPerPlayer {});
+          }
+        }
         player.ticket_count += ticket_count;
         Ok(player)
       },
