@@ -29,6 +29,8 @@ pub struct Game {
   pub ticket_price: Uint128,
   pub ticket_count: u32,
   pub seed: String,
+  pub max_tickets_per_player: Option<u32>,
+  pub has_distinct_winners: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -77,6 +79,8 @@ pub fn initialize(
       .time
       .plus_seconds(60 * msg.duration_minutes as u64),
     denom: msg.denom.clone(),
+    max_tickets_per_player: msg.max_tickets_per_player.clone(),
+    has_distinct_winners: msg.has_distinct_winners,
     player_count: 0,
     ticket_count: 0,
     ended_at: None,

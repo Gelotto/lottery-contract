@@ -23,6 +23,12 @@ pub fn execute_buy_tickets(
       owner.clone(),
       |p| -> Result<_, ContractError> {
         let mut player = p.unwrap_or_else(|| Player { ticket_count: 0 });
+        if let Some(max_tickets_per_player) = game.max_tickets_per_player {
+          // don't let player buy more tickets than max allowed, unless N/A
+          if player.ticket_count + ticket_count > max_tickets_per_player {
+            return Err(ContractError::ExceededMaxTicketsPerPlayer {});
+          }
+        }
         player.ticket_count += ticket_count;
         Ok(player)
       },

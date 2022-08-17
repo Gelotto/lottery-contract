@@ -127,7 +127,6 @@ fn select_winners(
   let orders: Vec<TicketOrder> = ORDERS.load(storage)?;
   let n_tickets_sold = orders[orders.len() - 1].cum_count;
   let n_winners = game.compute_winner_count();
-  let max_iters = 5 * n_winners;
 
   // get pct_split (only applicable for Fixed winner selection-type games)
   let selection = game.selection.clone();
@@ -136,16 +135,15 @@ fn select_winners(
     _ => vec![],
   };
 
-  let mut n_iters = 0;
   let mut n_found = 0u32;
   let mut rng = pcg64_from_game_seed(&game.seed)?;
 
   // keep picking winners until we're done, AT MOST n_winners
-  while n_found < n_winners && n_iters <= max_iters {
+  while n_found < n_winners {
     let x = rng.next_u64() % n_tickets_sold;
     let ticket_order: &TicketOrder = bisect(&orders[..], orders.len(), x);
 
-    if !WINNERS.has(storage, ticket_order.owner.clone()) {
+    if !game.has_distinct_winners || !WINNERS.has(storage, ticket_order.owner.clone()) {
       let player: Player = PLAYERS.load(storage, ticket_order.owner.clone())?;
       let claim_amount = allocate_reward(game, total_reward, n_found, &pct_split);
       WINNERS.save(
@@ -161,9 +159,7 @@ fn select_winners(
       )?;
       n_found += 1
     }
-    n_iters += 1;
   }
-
   Ok(n_found)
 }
 

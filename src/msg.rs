@@ -28,6 +28,8 @@ pub struct InstantiateMsg {
   pub denom: String,
   pub ticket_price: String,
   pub selection: WinnerSelection,
+  pub max_tickets_per_player: Option<u32>,
+  pub has_distinct_winners: bool,
 }
 
 /// Executable contract endpoints.
