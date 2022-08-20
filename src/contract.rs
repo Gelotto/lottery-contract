@@ -37,11 +37,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
   match msg {
     ExecuteMsg::EndGame { lucky_phrase } => execute::end_game(deps, env, info, &lucky_phrase),
+    ExecuteMsg::ClaimPrize { positions } => execute::claim_prize(deps, env, info, &positions),
     ExecuteMsg::BuyTickets {
       ticket_count,
       lucky_phrase,
     } => execute::buy_tickets(deps, env, info, ticket_count, &lucky_phrase),
-    ExecuteMsg::ClaimPrize {} => execute::claim_prize(deps, env, info),
   }
 }
 

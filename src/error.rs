@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -27,6 +27,9 @@ pub enum ContractError {
   #[error("InvalidSeed")]
   InvalidSeed { seed: String },
 
-  #[error("InvalidSeed")]
+  #[error("ExceededMaxTicketsPerPlayer")]
   ExceededMaxTicketsPerPlayer {},
+
+  #[error("UnderFundingThreshold")]
+  UnderFundingThreshold { funding_threshold: Uint128 },
 }

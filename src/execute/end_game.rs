@@ -8,10 +8,8 @@ use cosmwasm_std::{
   attr, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Storage,
   Uint128,
 };
+use std::collections::HashSet;
 
-/// Anyone can end a game so long as (1) the game hasn't already ended and (2)
-/// the creation time of the block is later than the game's `ends_after`
-/// timestamp (stored as nanoseconds).
 pub fn execute_end_game(
   deps: DepsMut,
   env: Env,
@@ -41,7 +39,7 @@ pub fn execute_end_game(
       let player: Player = PLAYERS.load(deps.storage, ticket_order.owner.clone())?;
       WINNERS.save(
         deps.storage,
-        ticket_order.owner.clone(),
+        0,
         &Winner {
           address: ticket_order.owner.clone(),
           ticket_count: player.ticket_count,
@@ -90,14 +88,23 @@ fn authorize_and_validate(
   game: &Game,
   env: &Env,
 ) -> Result<(), ContractError> {
-  if env.block.time <= game.ends_after {
-    return Err(ContractError::NotAuthorized {});
-  }
   if game.status != GameStatus::ACTIVE {
     return Err(ContractError::NotActive {});
   }
   if game.player_count == 0 {
     return Err(ContractError::NoWinners {});
+  }
+  // check if funding level is reached if applicable
+  if let Some(funding_threshold) = game.funding_threshold {
+    if Uint128::from(game.ticket_count) * game.ticket_price < funding_threshold {
+      return Err(ContractError::UnderFundingThreshold { funding_threshold });
+    }
+  }
+  // check if game end time is reached if applicable
+  if let Some(ends_after) = game.ends_after {
+    if env.block.time <= ends_after {
+      return Err(ContractError::NotAuthorized {});
+    }
   }
   Ok(())
 }
@@ -126,29 +133,39 @@ fn select_winners(
 ) -> Result<u32, ContractError> {
   let orders: Vec<TicketOrder> = ORDERS.load(storage)?;
   let n_tickets_sold = orders[orders.len() - 1].cum_count;
-  let n_winners = game.compute_winner_count();
 
-  // get pct_split (only applicable for Fixed winner selection-type games)
-  let selection = game.selection.clone();
-  let pct_split = match selection {
-    WinnerSelection::Fixed { pct_split, .. } => pct_split,
-    _ => vec![],
+  let (n_winners, pct_split) = match game.selection.clone() {
+    WinnerSelection::Fixed {
+      winner_count,
+      pct_split,
+    } => {
+      let n_winners = std::cmp::min(game.player_count, winner_count as u32);
+      (n_winners, pct_split.clone())
+    },
+    WinnerSelection::Percent { pct_player_count } => {
+      let n_winners = std::cmp::max(1, game.player_count * (pct_player_count as u32) / 100);
+      (n_winners, vec![])
+    },
   };
 
   let mut n_found = 0u32;
   let mut rng = pcg64_from_game_seed(&game.seed)?;
+  let mut visited: HashSet<Addr> = HashSet::with_capacity(n_winners as usize);
 
-  // keep picking winners until we're done, AT MOST n_winners
+  // keep picking winners (not necessarily distinct)
   while n_found < n_winners {
     let x = rng.next_u64() % n_tickets_sold;
     let ticket_order: &TicketOrder = bisect(&orders[..], orders.len(), x);
+    let winner_exists = visited.contains(&ticket_order.owner);
 
-    if !game.has_distinct_winners || !WINNERS.has(storage, ticket_order.owner.clone()) {
+    if !game.has_distinct_winners || !winner_exists {
+      // create and save the winner
       let player: Player = PLAYERS.load(storage, ticket_order.owner.clone())?;
       let claim_amount = allocate_reward(game, total_reward, n_found, &pct_split);
+      visited.insert(ticket_order.owner.clone());
       WINNERS.save(
         storage,
-        ticket_order.owner.clone(),
+        n_found,
         &Winner {
           address: ticket_order.owner.clone(),
           ticket_count: player.ticket_count,

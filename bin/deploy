@@ -23,6 +23,8 @@ CODE_ID_FILENAME="code_id.txt"
 # parent directory path of this script:
 SCRIPT_DIR=$(dirname -- "$0")
 
+set -e
+
 # Function for deploying to testnet or mainnet
 function deploy() {
   URL="$1"

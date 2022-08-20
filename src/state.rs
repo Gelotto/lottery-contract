@@ -22,15 +22,16 @@ pub struct Game {
   pub status: GameStatus,
   pub selection: WinnerSelection,
   pub player_count: u32,
-  pub ends_after: Timestamp,
   pub ended_at: Option<Timestamp>,
   pub ended_by: Option<Addr>,
   pub denom: String,
   pub ticket_price: Uint128,
   pub ticket_count: u32,
   pub seed: String,
-  pub max_tickets_per_player: Option<u32>,
+  pub ends_after: Option<Timestamp>,
   pub has_distinct_winners: bool,
+  pub max_tickets_per_player: Option<u32>,
+  pub funding_threshold: Option<Uint128>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -56,7 +57,7 @@ pub struct Winner {
 
 pub const GAME: Item<Game> = Item::new("game");
 pub const ORDERS: Item<Vec<TicketOrder>> = Item::new("orders");
-pub const WINNERS: Map<Addr, Winner> = Map::new("winners");
+pub const WINNERS: Map<u32, Winner> = Map::new("winners");
 pub const PLAYERS: Map<Addr, Player> = Map::new("players");
 
 /// Initialize contract state data.
@@ -74,13 +75,14 @@ pub fn initialize(
     id: msg.id.clone(),
     selection: msg.selection.clone(),
     ticket_price: Uint128::try_from(&msg.ticket_price[..])?,
-    ends_after: env
-      .block
-      .time
-      .plus_seconds(60 * msg.duration_minutes as u64),
+    ends_after: match msg.duration_minutes {
+      Some(duration_minutes) => Some(env.block.time.plus_seconds(60 * duration_minutes as u64)),
+      None => None,
+    },
     denom: msg.denom.clone(),
     max_tickets_per_player: msg.max_tickets_per_player.clone(),
     has_distinct_winners: msg.has_distinct_winners,
+    funding_threshold: msg.funding_threshold.clone(),
     player_count: 0,
     ticket_count: 0,
     ended_at: None,
@@ -93,26 +95,4 @@ pub fn initialize(
   Ok(())
 }
 
-impl Game {
-  /// Has the game "ended". If so, it implies that no more tickets can be
-  /// ordered and winners have been chosen.
-  pub fn has_ended(
-    &self,
-    time: Timestamp,
-  ) -> bool {
-    time > self.ends_after
-  }
-
-  /// Calculates the max number of players who are elegible to be counted as
-  /// winners when the game ends.
-  pub fn compute_winner_count(&self) -> u32 {
-    match self.selection {
-      WinnerSelection::Fixed { winner_count, .. } => {
-        std::cmp::min(self.player_count, winner_count as u32)
-      },
-      WinnerSelection::Percent { pct_player_count } => {
-        std::cmp::max(1, self.player_count * (pct_player_count as u32) / 100)
-      },
-    }
-  }
-}
+impl Game {}

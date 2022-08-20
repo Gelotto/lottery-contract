@@ -16,6 +16,9 @@ pub fn execute_buy_tickets(
   let mut game: Game = GAME.load(deps.storage)?;
   let owner = info.sender.clone();
 
+  // amount owed by player in exchange for the tickets:
+  let payment_amount = game.ticket_price * Uint128::from(ticket_count);
+
   if PLAYERS.has(deps.storage, owner.clone()) {
     // update player's ticket count
     PLAYERS.update(
@@ -33,9 +36,14 @@ pub fn execute_buy_tickets(
         Ok(player)
       },
     )?;
-  }
-  // insert Player with initial ticket count
-  else {
+  } else {
+    // insert Player with initial ticket count
+    // don't let player buy more tickets than max allowed, unless N/A
+    if let Some(max_tickets_per_player) = game.max_tickets_per_player {
+      if ticket_count > max_tickets_per_player {
+        return Err(ContractError::ExceededMaxTicketsPerPlayer {});
+      }
+    }
     game.player_count += 1;
     PLAYERS.save(deps.storage, owner.clone(), &Player { ticket_count })?;
   }
@@ -64,9 +72,6 @@ pub fn execute_buy_tickets(
       Ok(orders)
     },
   )?;
-
-  // amount owed by player in exchange for the tickets:
-  let payment_amount = game.ticket_price * Uint128::from(ticket_count);
 
   // transfer payment from player to the contract
   Ok(

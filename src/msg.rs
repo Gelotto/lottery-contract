@@ -1,5 +1,5 @@
 use crate::state::Winner;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -24,12 +24,13 @@ pub enum WinnerSelection {
 pub struct InstantiateMsg {
   pub id: String,
   pub name: Option<String>,
-  pub duration_minutes: u32,
+  pub duration_minutes: Option<u32>,
   pub denom: String,
   pub ticket_price: String,
   pub selection: WinnerSelection,
-  pub max_tickets_per_player: Option<u32>,
   pub has_distinct_winners: bool,
+  pub max_tickets_per_player: Option<u32>,
+  pub funding_threshold: Option<Uint128>,
 }
 
 /// Executable contract endpoints.
@@ -43,7 +44,9 @@ pub enum ExecuteMsg {
     ticket_count: u32,
     lucky_phrase: Option<String>,
   },
-  ClaimPrize {},
+  ClaimPrize {
+    positions: Vec<u32>,
+  },
 }
 
 /// Custom contract query endpoints.
