@@ -136,9 +136,15 @@ fn select_winners(
   let (n_winners, pct_split) = match game.selection.clone() {
     WinnerSelection::Fixed {
       winner_count,
+      max_winner_count,
       pct_split,
     } => {
-      let n_winners = std::cmp::min(game.player_count, winner_count as u32);
+      let mut n_winners = std::cmp::min(game.player_count, winner_count as u32);
+      if let Some(n_max) = max_winner_count {
+        if n_max > 0 {
+          n_winners = std::cmp::min(n_max, n_winners);
+        }
+      }
       (n_winners, pct_split.clone())
     },
     WinnerSelection::Percent { pct_player_count } => {

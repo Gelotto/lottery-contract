@@ -12,6 +12,7 @@ pub enum WinnerSelection {
     // Ex: [60, 30, 10] means 60% to 1st place, 30% to 2nd, 10% to 3rd
     pct_split: Vec<u8>,
     winner_count: u32,
+    max_winner_count: Option<u32>,
   },
   Percent {
     // Ex: 2 means that max(1, 0.02 * player_count) win
@@ -26,6 +27,7 @@ pub struct InstantiateMsg {
   pub name: Option<String>,
   pub duration_minutes: Option<u32>,
   pub denom: String,
+  pub cw20_token_address: Option<Addr>,
   pub ticket_price: String,
   pub selection: WinnerSelection,
   pub has_distinct_winners: bool,
