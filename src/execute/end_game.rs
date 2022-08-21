@@ -3,7 +3,9 @@ use crate::error::ContractError;
 use crate::msg::WinnerSelection;
 use crate::random;
 use crate::random::pcg64_from_game_seed;
-use crate::state::{Game, GameStatus, Player, TicketOrder, Winner, GAME, ORDERS, PLAYERS, WINNERS};
+use crate::state::{
+  Game, GameStatus, Player, Winner, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS, WINNERS,
+};
 use cosmwasm_std::{
   attr, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Storage,
   Uint128,
@@ -131,9 +133,6 @@ fn select_winners(
   game: &Game,
   total_reward: Uint128,
 ) -> Result<u32, ContractError> {
-  let orders: Vec<TicketOrder> = ORDERS.load(storage)?;
-  let n_tickets_sold = orders[orders.len() - 1].cum_count;
-
   let (n_winners, pct_split) = match game.selection.clone() {
     WinnerSelection::Fixed {
       winner_count,
@@ -148,26 +147,25 @@ fn select_winners(
     },
   };
 
+  let indices = INDICES.load(storage)?;
   let mut n_found = 0u32;
   let mut rng = pcg64_from_game_seed(&game.seed)?;
-  let mut visited: HashSet<Addr> = HashSet::with_capacity(n_winners as usize);
+  let mut visited: HashSet<u32> = HashSet::with_capacity(n_winners as usize);
 
-  // keep picking winners (not necessarily distinct)
   while n_found < n_winners {
-    let x = rng.next_u64() % n_tickets_sold;
-    let ticket_order: &TicketOrder = bisect(&orders[..], orders.len(), x);
-    let winner_exists = visited.contains(&ticket_order.owner);
-
-    if !game.has_distinct_winners || !winner_exists {
-      // create and save the winner
-      let player: Player = PLAYERS.load(storage, ticket_order.owner.clone())?;
+    let i = rng.next_u64() % indices.len() as u64;
+    let address_index = indices[i as usize];
+    let already_selected = visited.contains(&address_index);
+    if !game.has_distinct_winners || !already_selected {
+      let addr = INDEX_2_ADDR.load(storage, address_index)?;
+      let player = PLAYERS.load(storage, addr.clone())?;
       let claim_amount = allocate_reward(game, total_reward, n_found, &pct_split);
-      visited.insert(ticket_order.owner.clone());
+      visited.insert(address_index);
       WINNERS.save(
         storage,
         n_found,
         &Winner {
-          address: ticket_order.owner.clone(),
+          address: addr,
           ticket_count: player.ticket_count,
           position: n_found,
           has_claimed: false,
@@ -177,6 +175,7 @@ fn select_winners(
       n_found += 1
     }
   }
+
   Ok(n_found)
 }
 
@@ -204,24 +203,4 @@ fn allocate_reward(
       total_reward / n_winners
     },
   }
-}
-
-/// Return the owner address of the ticket order whose interval contains x.
-fn bisect(
-  orders: &[TicketOrder],
-  n: usize, // == size of `orders` slice
-  x: u64,
-) -> &TicketOrder {
-  let i = n / 2;
-  let order = &orders[i];
-  let lower = order.cum_count - order.count as u64;
-  let upper = order.cum_count;
-  if x < lower {
-    // go left
-    return bisect(&orders[..i], i, x);
-  } else if x >= upper {
-    // go right
-    return bisect(&orders[i..], n - i, x);
-  }
-  &order
 }

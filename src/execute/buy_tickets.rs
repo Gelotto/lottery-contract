@@ -1,6 +1,8 @@
 use crate::error::ContractError;
 use crate::random;
-use crate::state::{Game, Player, TicketOrder, GAME, ORDERS, PLAYERS};
+use crate::state::{
+  Game, Player, TicketOrder, ADDR_2_INDEX, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS,
+};
 use cosmwasm_std::{attr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128};
 
 /// Buy tickets. Tickets can be bought even after the `ends_after` date. Only
@@ -45,7 +47,10 @@ pub fn execute_buy_tickets(
       }
     }
     game.player_count += 1;
+
     PLAYERS.save(deps.storage, owner.clone(), &Player { ticket_count })?;
+    ADDR_2_INDEX.save(deps.storage, info.sender, &game.player_count)?;
+    INDEX_2_ADDR.save(deps.storage, game.player_count, &owner)?;
   }
 
   // update game's player count and PRNG seed
@@ -54,13 +59,23 @@ pub fn execute_buy_tickets(
 
   GAME.save(deps.storage, &game)?;
 
-  // add a TicketOrder to specialized `ORDERS` vec, used in `end_game`
-  // when performing binary search to find winners.
+  let address_index = ADDR_2_INDEX.load(deps.storage, owner.clone())?;
+
+  INDICES.update(
+    deps.storage,
+    |mut indices: Vec<u32>| -> Result<_, ContractError> {
+      for _ in 0..ticket_count {
+        indices.push(address_index)
+      }
+      Ok(indices)
+    },
+  )?;
+
   ORDERS.update(
     deps.storage,
     |mut orders: Vec<TicketOrder>| -> Result<_, ContractError> {
       orders.push(TicketOrder {
-        owner: owner,
+        owner: owner.clone(),
         count: ticket_count,
         cum_count: (ticket_count as u64)
           + if orders.len() > 0 {
@@ -82,7 +97,7 @@ pub fn execute_buy_tickets(
       }))
       .add_attributes(vec![
         attr("action", "buy_tickets"),
-        attr("to", info.sender.clone()),
+        attr("ticket_count", ticket_count.to_string()),
       ]),
   )
 }

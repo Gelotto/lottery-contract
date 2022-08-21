@@ -59,6 +59,9 @@ pub const GAME: Item<Game> = Item::new("game");
 pub const ORDERS: Item<Vec<TicketOrder>> = Item::new("orders");
 pub const WINNERS: Map<u32, Winner> = Map::new("winners");
 pub const PLAYERS: Map<Addr, Player> = Map::new("players");
+pub const ADDR_2_INDEX: Map<Addr, u32> = Map::new("addr_2_index");
+pub const INDEX_2_ADDR: Map<u32, Addr> = Map::new("index_2_addr");
+pub const INDICES: Item<Vec<u32>> = Item::new("indices");
 
 /// Initialize contract state data.
 pub fn initialize(
@@ -91,6 +94,7 @@ pub fn initialize(
 
   GAME.save(deps.storage, &game)?;
   ORDERS.save(deps.storage, &vec![])?;
+  INDICES.save(deps.storage, &vec![])?;
 
   Ok(())
 }
