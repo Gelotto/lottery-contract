@@ -3,7 +3,11 @@ use crate::random;
 use crate::state::{
   Game, Player, TicketOrder, ADDR_2_INDEX, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS,
 };
-use cosmwasm_std::{attr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{
+  attr, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128,
+  WasmMsg,
+};
+use cw20::Cw20ExecuteMsg;
 
 /// Buy tickets. Tickets can be bought even after the `ends_after` date. Only
 /// once the `end_game` endpoint has been executed does the game close to new
@@ -49,7 +53,7 @@ pub fn execute_buy_tickets(
     game.player_count += 1;
 
     PLAYERS.save(deps.storage, owner.clone(), &Player { ticket_count })?;
-    ADDR_2_INDEX.save(deps.storage, info.sender, &game.player_count)?;
+    ADDR_2_INDEX.save(deps.storage, info.sender.clone(), &game.player_count)?;
     INDEX_2_ADDR.save(deps.storage, game.player_count, &owner)?;
   }
 
@@ -89,15 +93,42 @@ pub fn execute_buy_tickets(
   )?;
 
   // transfer payment from player to the contract
-  Ok(
-    Response::new()
-      .add_message(CosmosMsg::Bank(BankMsg::Send {
+  let response = match game.cw20_token_address {
+    Some(cw20_token_address) => {
+      // perform CW20 transfer from sender to contract.  note that the cw20
+      // token allowance for this contract must be set.
+      let transfer_from = Cw20ExecuteMsg::TransferFrom {
+        owner: info.sender.clone().into(),
+        recipient: env.contract.address.clone().into(),
+        amount: payment_amount,
+      };
+
+      let execute_msg = WasmMsg::Execute {
+        contract_addr: cw20_token_address.clone().into(),
+        msg: to_binary(&transfer_from)?,
+        funds: vec![],
+      };
+
+      Response::new()
+        .add_submessage(SubMsg::new(execute_msg))
+        .add_attributes(vec![
+          attr("action", "buy_tickets"),
+          attr("ticket_count", ticket_count.to_string()),
+        ])
+    },
+    None => {
+      // perform transfer of IBC asset from sender to contract
+      let message = CosmosMsg::Bank(BankMsg::Send {
         to_address: env.contract.address.into_string(),
         amount: vec![Coin::new(payment_amount.u128(), game.denom)],
-      }))
-      .add_attributes(vec![
+      });
+
+      Response::new().add_message(message).add_attributes(vec![
         attr("action", "buy_tickets"),
         attr("ticket_count", ticket_count.to_string()),
-      ]),
-  )
+      ])
+    },
+  };
+
+  Ok(response)
 }

@@ -1,6 +1,10 @@
 use crate::error::ContractError;
 use crate::state::{Game, GameStatus, GAME, WINNERS};
-use cosmwasm_std::{attr, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128};
+use cosmwasm_std::{
+  attr, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128,
+  WasmMsg,
+};
+use cw20::Cw20ExecuteMsg;
 
 pub fn execute_claim_prize(
   deps: DepsMut,
@@ -33,8 +37,28 @@ pub fn execute_claim_prize(
   }
 
   // transfer balance to the winner
-  Ok(
-    Response::new()
+  let response = match game.cw20_token_address {
+    Some(cw20_token_address) => {
+      let transfer = Cw20ExecuteMsg::Transfer {
+        recipient: info.sender.clone().into(),
+        amount: claimed_amount,
+      };
+
+      let execute_msg = WasmMsg::Execute {
+        contract_addr: cw20_token_address.clone().into(),
+        msg: to_binary(&transfer)?,
+        funds: vec![],
+      };
+
+      Response::new()
+        .add_submessage(SubMsg::new(execute_msg))
+        .add_attributes(vec![
+          attr("action", "claim_prize"),
+          attr("claimed_amount", claimed_amount.to_string()),
+          attr("to", info.sender.clone()),
+        ])
+    },
+    None => Response::new()
       .add_message(CosmosMsg::Bank(BankMsg::Send {
         to_address: info.sender.clone().into(),
         amount: vec![Coin::new(claimed_amount.u128(), game.denom)],
@@ -44,5 +68,7 @@ pub fn execute_claim_prize(
         attr("claimed_amount", claimed_amount.to_string()),
         attr("to", info.sender.clone()),
       ]),
-  )
+  };
+
+  Ok(response)
 }

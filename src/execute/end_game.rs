@@ -7,9 +7,10 @@ use crate::state::{
   Game, GameStatus, Player, Winner, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS, WINNERS,
 };
 use cosmwasm_std::{
-  attr, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Storage,
-  Uint128,
+  attr, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response,
+  Storage, SubMsg, Uint128, WasmMsg,
 };
+use cw20::Cw20ExecuteMsg;
 use std::collections::HashSet;
 
 pub fn execute_end_game(
@@ -30,9 +31,15 @@ pub fn execute_end_game(
   )?;
 
   // get total prize balance
-  let jackpot: Coin = deps
-    .querier
-    .query_balance(env.contract.address.clone(), game.denom.clone())?;
+  let jackpot: Coin = match game.cw20_token_address {
+    Some(..) => Coin {
+      amount: Uint128::from(game.ticket_count) * game.ticket_price,
+      denom: game.denom.clone(),
+    },
+    None => deps
+      .querier
+      .query_balance(env.contract.address.clone(), game.denom.clone())?,
+  };
 
   // if we only have one player, just refund that player and skip the whole
   // winner selection process.
@@ -70,18 +77,41 @@ pub fn execute_end_game(
     // find N winners and store in state
     let n_winners = select_winners(deps.storage, &game, jackpot.amount - gelotto_jackpot_amount)?;
 
-    Ok(
-      Response::new()
-        // transfer Gelotto's 10% to its gaming fund
-        .add_message(CosmosMsg::Bank(BankMsg::Send {
-          to_address: GELOTTO_GAME_FUND_ADDR.clone().into(),
-          amount: vec![Coin::new(gelotto_jackpot_amount.into(), game.denom.clone())],
-        }))
-        .add_attributes(vec![
-          attr("action", "end_game"),
-          attr("winner_count", n_winners.to_string()),
-        ]),
-    )
+    let response = match game.cw20_token_address {
+      Some(cw20_token_address) => {
+        let transfer = Cw20ExecuteMsg::Transfer {
+          recipient: env.contract.address.clone().into(),
+          amount: gelotto_jackpot_amount,
+        };
+
+        let execute_msg = WasmMsg::Execute {
+          contract_addr: cw20_token_address.clone().into(),
+          msg: to_binary(&transfer)?,
+          funds: vec![],
+        };
+
+        Response::new()
+          .add_submessage(SubMsg::new(execute_msg))
+          .add_attributes(vec![
+            attr("action", "end_game"),
+            attr("winner_count", n_winners.to_string()),
+          ])
+      },
+      None => {
+        Response::new()
+          // transfer Gelotto's 10% to its gaming fund
+          .add_message(CosmosMsg::Bank(BankMsg::Send {
+            to_address: GELOTTO_GAME_FUND_ADDR.clone().into(),
+            amount: vec![Coin::new(gelotto_jackpot_amount.into(), game.denom.clone())],
+          }))
+          .add_attributes(vec![
+            attr("action", "end_game"),
+            attr("winner_count", n_winners.to_string()),
+          ])
+      },
+    };
+
+    Ok(response)
   }
 }
 
