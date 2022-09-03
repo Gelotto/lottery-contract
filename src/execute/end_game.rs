@@ -80,7 +80,7 @@ pub fn execute_end_game(
     let response = match game.cw20_token_address {
       Some(cw20_token_address) => {
         let transfer = Cw20ExecuteMsg::Transfer {
-          recipient: env.contract.address.clone().into(),
+          recipient: GELOTTO_GAME_FUND_ADDR.clone().into(),
           amount: gelotto_jackpot_amount,
         };
 
