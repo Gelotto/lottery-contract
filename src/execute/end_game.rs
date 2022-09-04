@@ -57,7 +57,7 @@ pub fn execute_end_game(
           has_claimed: true,
         },
       )?;
-      Ok(
+      return Ok(
         Response::new()
           .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: ticket_order.owner.clone().into(),
@@ -66,7 +66,7 @@ pub fn execute_end_game(
           .add_attributes(vec![attr("action", "end_game"), attr("winner_count", "1")]),
       )
     } else {
-      Ok(
+      return Ok(
         Response::new().add_attributes(vec![attr("action", "end_game"), attr("winner_count", "0")]),
       )
     }
