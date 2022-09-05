@@ -1,5 +1,5 @@
 network ?= devnet  # network := devnet|mainnet|testnet
-sender ?= juno16g2rahf5846rxzp3fwlswy08fz8ccuwk03k57y
+sender ?= juno12jpu0gqxtslzy3lsw3xm86euqn83mdas6mflme
 wasm_filename ?= 
 build:
 	./bin/build
