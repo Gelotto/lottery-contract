@@ -1,7 +1,5 @@
 use crate::constants::{
-  GELOTTO_ADDR, 
-  GELOTTO_ANNUAL_GRAND_PRIZE_ADDR, 
-  GELOTTO_SHOPPE_REWARDS_ADDR,
+  GELOTTO_ADDR, GELOTTO_ANNUAL_GRAND_PRIZE_ADDR, GELOTTO_SHOPPE_REWARDS_ADDR,
 };
 use crate::error::ContractError;
 use crate::msg::WinnerSelection;
@@ -26,6 +24,7 @@ pub fn execute_end_game(
   let pct_gelotto: Uint128 = Uint128::from(4u128);
   let pct_gelotto_annual_grand_prize: Uint128 = Uint128::from(5u128);
   let pct_gelotto_shoppe_rewards: Uint128 = Uint128::from(1u128);
+  let pct_total = pct_gelotto + pct_gelotto_annual_grand_prize + pct_gelotto_shoppe_rewards;
 
   let mut game: Game = GAME.load(deps.storage)?;
 
@@ -78,13 +77,15 @@ pub fn execute_end_game(
             msg: to_binary(&transfer)?,
             funds: vec![],
           };
-          return Ok(Response::new()
-            .add_submessage(SubMsg::new(execute_msg))
-            .add_attributes(vec![
-              attr("end_game", jackpot.amount.clone()),
-              attr("to", info.sender.clone()),
-              attr("winner_count", "1"),
-          ]));
+          return Ok(
+            Response::new()
+              .add_submessage(SubMsg::new(execute_msg))
+              .add_attributes(vec![
+                attr("end_game", jackpot.amount.clone()),
+                attr("to", info.sender.clone()),
+                attr("winner_count", "1"),
+              ]),
+          );
         },
         None => {
           // transfer IBC asset
@@ -95,27 +96,28 @@ pub fn execute_end_game(
                 amount: vec![jackpot],
               }))
               .add_attributes(vec![attr("action", "end_game"), attr("winner_count", "1")]),
-          )
-        }
+          );
+        },
       }
     } else {
       return Ok(
         Response::new().add_attributes(vec![attr("action", "end_game"), attr("winner_count", "0")]),
-      )
+      );
     }
   } else {
-    // calculate amount owed to Gelotto's gaming fund (10%)
-    let gelotto_jackpot_amount = jackpot.amount / Uint128::from(10u128);
+    // total amount split among winning wallets. this should equal 90% of the
+    // total amount owned by the contract.
+    let winnings = ((Uint128::from(100u128) - pct_total) * jackpot.amount) / Uint128::from(100u128);
 
     // find N winners and store in state
-    let n_winners = select_winners(deps.storage, &game, jackpot.amount - gelotto_jackpot_amount)?;
+    let n_winners = select_winners(deps.storage, &game, winnings)?;
 
     let response = match game.cw20_token_address {
       Some(cw20_token_address) => {
         // create transfer to Gelotto
         let transfer1 = Cw20ExecuteMsg::Transfer {
           recipient: GELOTTO_ADDR.clone().into(),
-          amount: (pct_gelotto * gelotto_jackpot_amount / Uint128::from(100u128)).into(), 
+          amount: (pct_gelotto * jackpot.amount / Uint128::from(100u128)).into(),
         };
         let execute_msg1 = WasmMsg::Execute {
           contract_addr: cw20_token_address.clone().into(),
@@ -125,7 +127,7 @@ pub fn execute_end_game(
         // create transfer to Gelotto Annaul Grand Prize account
         let transfer2 = Cw20ExecuteMsg::Transfer {
           recipient: GELOTTO_ANNUAL_GRAND_PRIZE_ADDR.clone().into(),
-          amount: (pct_gelotto_annual_grand_prize * gelotto_jackpot_amount / Uint128::from(100u128)).into(), 
+          amount: (pct_gelotto_annual_grand_prize * jackpot.amount / Uint128::from(100u128)).into(),
         };
         let execute_msg2 = WasmMsg::Execute {
           contract_addr: cw20_token_address.clone().into(),
@@ -135,7 +137,7 @@ pub fn execute_end_game(
         // create transfer to Gelotto Shopee Rewards account
         let transfer3 = Cw20ExecuteMsg::Transfer {
           recipient: GELOTTO_SHOPPE_REWARDS_ADDR.clone().into(),
-          amount: (pct_gelotto_shoppe_rewards * gelotto_jackpot_amount / Uint128::from(100u128)).into(), 
+          amount: (pct_gelotto_shoppe_rewards * jackpot.amount / Uint128::from(100u128)).into(),
         };
         let execute_msg3 = WasmMsg::Execute {
           contract_addr: cw20_token_address.clone().into(),
@@ -157,23 +159,23 @@ pub fn execute_end_game(
           .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: GELOTTO_SHOPPE_REWARDS_ADDR.clone().into(),
             amount: vec![Coin::new(
-                (pct_gelotto_shoppe_rewards * gelotto_jackpot_amount / Uint128::from(100u128)).into(), 
-                game.denom.clone()
+              (pct_gelotto_shoppe_rewards * jackpot.amount / Uint128::from(100u128)).into(),
+              game.denom.clone(),
             )],
           }))
           .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: GELOTTO_ANNUAL_GRAND_PRIZE_ADDR.clone().into(),
             amount: vec![Coin::new(
-                (pct_gelotto_annual_grand_prize * gelotto_jackpot_amount / Uint128::from(100u128)).into(), 
-                game.denom.clone()
+              (pct_gelotto_annual_grand_prize * jackpot.amount / Uint128::from(100u128)).into(),
+              game.denom.clone(),
             )],
           }))
           // transfer Gelotto's 10% to its gaming fund
           .add_message(CosmosMsg::Bank(BankMsg::Send {
             to_address: GELOTTO_ADDR.clone().into(),
             amount: vec![Coin::new(
-                (pct_gelotto * gelotto_jackpot_amount / Uint128::from(100u128)).into(), 
-                game.denom.clone()
+              (pct_gelotto * jackpot.amount / Uint128::from(100u128)).into(),
+              game.denom.clone(),
             )],
           }))
           .add_attributes(vec![

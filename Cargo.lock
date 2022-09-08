@@ -404,7 +404,7 @@ dependencies = [
 
 [[package]]
 name = "cw-gelotto-ibc-lottery-smart-contract"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "base64ct",
  "cosmwasm-schema",
