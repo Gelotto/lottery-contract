@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use crate::error::ContractError;
 use crate::execute;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query;
 use crate::state;
 use cosmwasm_std::entry_point;
@@ -59,4 +59,14 @@ pub fn query(
     },
   }?;
   Ok(result)
+}
+
+#[entry_point]
+pub fn migrate(
+  _deps: DepsMut,
+  _env: Env,
+  _msg: MigrateMsg,
+) -> Result<Response, ContractError> {
+  // No state migrations performed, just returned a Response
+  Ok(Response::default())
 }
