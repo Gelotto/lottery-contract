@@ -1,4 +1,6 @@
+use crate::constants::LOTTERY_REGISTRY_CONTRACT_ADDRESS;
 use crate::error::ContractError;
+use crate::msg::LotteryRegistryMsg;
 use crate::random;
 use crate::state::{
   Game, Player, TicketOrder, ADDR_2_INDEX, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS,
@@ -92,6 +94,16 @@ pub fn execute_buy_tickets(
     },
   )?;
 
+  // create submsg to inform registry that tickets have been bought
+  let on_buy_tickets_msg = LotteryRegistryMsg::OnBuyTickets {
+    new_ticket_count: game.ticket_count,
+  };
+  let on_buy_tickets_submsg = SubMsg::new(WasmMsg::Execute {
+    contract_addr: LOTTERY_REGISTRY_CONTRACT_ADDRESS.clone().into(),
+    msg: to_binary(&on_buy_tickets_msg)?,
+    funds: vec![],
+  });
+
   // transfer payment from player to the contract
   let response = match game.cw20_token_address {
     Some(cw20_token_address) => {
@@ -111,6 +123,7 @@ pub fn execute_buy_tickets(
 
       Response::new()
         .add_submessage(SubMsg::new(execute_msg))
+        .add_submessage(on_buy_tickets_submsg)
         .add_attributes(vec![
           attr("action", "buy_tickets"),
           attr("ticket_count", ticket_count.to_string()),
@@ -123,10 +136,13 @@ pub fn execute_buy_tickets(
         amount: vec![Coin::new(payment_amount.u128(), game.denom)],
       });
 
-      Response::new().add_message(message).add_attributes(vec![
-        attr("action", "buy_tickets"),
-        attr("ticket_count", ticket_count.to_string()),
-      ])
+      Response::new()
+        .add_message(message)
+        .add_submessage(on_buy_tickets_submsg)
+        .add_attributes(vec![
+          attr("action", "buy_tickets"),
+          attr("ticket_count", ticket_count.to_string()),
+        ])
     },
   };
 

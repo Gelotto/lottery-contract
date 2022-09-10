@@ -1,8 +1,9 @@
 use crate::constants::{
   GELOTTO_ADDR, GELOTTO_ANNUAL_GRAND_PRIZE_ADDR, GELOTTO_SHOPPE_REWARDS_ADDR,
+  LOTTERY_REGISTRY_CONTRACT_ADDRESS,
 };
 use crate::error::ContractError;
-use crate::msg::WinnerSelection;
+use crate::msg::{LotteryRegistryMsg, WinnerSelection};
 use crate::random;
 use crate::random::pcg64_from_game_seed;
 use crate::state::{
@@ -48,6 +49,14 @@ pub fn execute_end_game(
       .query_balance(env.contract.address.clone(), game.denom.clone())?,
   };
 
+  // create submsg to inform lottery registry contract that this game ended
+  let on_end_lottery_msg = LotteryRegistryMsg::OnEndLottery {};
+  let on_end_lottery_submsg = SubMsg::new(WasmMsg::Execute {
+    contract_addr: LOTTERY_REGISTRY_CONTRACT_ADDRESS.clone().into(),
+    msg: to_binary(&on_end_lottery_msg)?,
+    funds: vec![],
+  });
+
   // if we only have one player, just refund that player and skip the whole
   // winner selection process.
   if game.player_count == 1 {
@@ -80,6 +89,7 @@ pub fn execute_end_game(
           return Ok(
             Response::new()
               .add_submessage(SubMsg::new(execute_msg))
+              .add_submessage(on_end_lottery_submsg)
               .add_attributes(vec![
                 attr("end_game", jackpot.amount.clone()),
                 attr("to", info.sender.clone()),
@@ -95,6 +105,7 @@ pub fn execute_end_game(
                 to_address: ticket_order.owner.clone().into(),
                 amount: vec![jackpot],
               }))
+              .add_submessage(on_end_lottery_submsg)
               .add_attributes(vec![attr("action", "end_game"), attr("winner_count", "1")]),
           );
         },
@@ -149,6 +160,7 @@ pub fn execute_end_game(
           .add_submessage(SubMsg::new(execute_msg1))
           .add_submessage(SubMsg::new(execute_msg2))
           .add_submessage(SubMsg::new(execute_msg3))
+          .add_submessage(on_end_lottery_submsg)
           .add_attributes(vec![
             attr("action", "end_game"),
             attr("winner_count", n_winners.to_string()),
@@ -178,6 +190,7 @@ pub fn execute_end_game(
               game.denom.clone(),
             )],
           }))
+          .add_submessage(on_end_lottery_submsg)
           .add_attributes(vec![
             attr("action", "end_game"),
             attr("winner_count", n_winners.to_string()),

@@ -1,5 +1,5 @@
 use crate::state::Winner;
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Timestamp, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -23,6 +23,8 @@ pub enum WinnerSelection {
 /// Initial contract state.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
+  pub code_id: u32,
+  pub registry_contract_address: Option<Addr>,
   pub id: String,
   pub name: Option<String>,
   pub duration_minutes: Option<u32>,
@@ -83,4 +85,26 @@ pub struct GetPlayersResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GetTicketCountResponse {
   pub ticket_count: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum LotteryRegistryMsg {
+  OnCreateLottery {
+    creator: Addr,
+    code_id: u32,
+    addr: Addr,
+    name: Option<String>,
+    denom: String,
+    cw20_token_address: Option<Addr>,
+    ticket_price: Uint128,
+    ticket_count: u32,
+    ends_after: Option<Timestamp>,
+    funding_threshold: Option<Uint128>,
+    selection: WinnerSelection,
+  },
+  OnEndLottery {},
+  OnBuyTickets {
+    new_ticket_count: u32,
+  },
 }

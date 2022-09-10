@@ -70,7 +70,7 @@ pub fn initialize(
   env: &Env,
   info: &MessageInfo,
   msg: &InstantiateMsg,
-) -> Result<(), ContractError> {
+) -> Result<Game, ContractError> {
   let game = Game {
     seed: random::seed::init(&msg.id, env.block.height),
     name: msg.name.clone(),
@@ -98,7 +98,7 @@ pub fn initialize(
   ORDERS.save(deps.storage, &vec![])?;
   INDICES.save(deps.storage, &vec![])?;
 
-  Ok(())
+  Ok(game)
 }
 
 impl Game {}
