@@ -20,6 +20,21 @@ pub enum WinnerSelection {
   },
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum BackgroundStyle {
+  Image { uri: String },
+  Color { hex: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct Style {
+  background: BackgroundStyle,
+  base_color: String,
+  speed_dial_color: String,
+}
+
 /// Initial contract state.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -35,6 +50,7 @@ pub struct InstantiateMsg {
   pub has_distinct_winners: bool,
   pub max_tickets_per_player: Option<u32>,
   pub funding_threshold: Option<Uint128>,
+  pub style: Style,
 }
 
 /// Executable contract endpoints.

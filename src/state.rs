@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::msg::{InstantiateMsg, WinnerSelection};
+use crate::msg::{InstantiateMsg, Style, WinnerSelection};
 use crate::random;
 use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
@@ -33,6 +33,7 @@ pub struct Game {
   pub has_distinct_winners: bool,
   pub max_tickets_per_player: Option<u32>,
   pub funding_threshold: Option<Uint128>,
+  pub style: Style,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -72,6 +73,7 @@ pub fn initialize(
   msg: &InstantiateMsg,
 ) -> Result<Game, ContractError> {
   let game = Game {
+    style: msg.style.clone(),
     seed: random::seed::init(&msg.id, env.block.height),
     name: msg.name.clone(),
     owner: info.sender.clone(),
