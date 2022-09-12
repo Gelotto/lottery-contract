@@ -5,7 +5,8 @@ use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 use cosmwasm_std::Coin;
 
 use cw_gelotto_ibc_lottery_smart_contract::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use cw_gelotto_ibc_lottery_smart_contract::state::{Game, GameStatus, Player, TicketOrder, Winner};
+use cw_gelotto_ibc_lottery_smart_contract::state::{Player, TicketOrder, Winner};
+use cw_lottery_lib::game::{Game, GameStatus};
 
 fn main() {
   let mut out_dir = current_dir().unwrap();

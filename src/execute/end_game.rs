@@ -3,40 +3,39 @@ use crate::constants::{
   LOTTERY_REGISTRY_CONTRACT_ADDRESS,
 };
 use crate::error::ContractError;
-use crate::msg::{LotteryRegistryMsg, WinnerSelection};
 use crate::random;
 use crate::random::pcg64_from_game_seed;
 use crate::state::{
-  Game, GameStatus, Player, Winner, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS, WINNERS,
+  query_game, Player, Winner, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS, SEED, WINNERS,
 };
 use cosmwasm_std::{
   attr, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response,
   Storage, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
+use cw_lottery_lib::game::{Game, GameStatus, WinnerSelection};
+use cw_lottery_lib::msg::RegistryExecuteMsg;
 use std::collections::HashSet;
 
 pub fn execute_end_game(
   deps: DepsMut,
   env: Env,
   info: MessageInfo,
-  lucky_phrase: &Option<String>,
 ) -> Result<Response, ContractError> {
   let pct_gelotto: Uint128 = Uint128::from(4u128);
   let pct_gelotto_annual_grand_prize: Uint128 = Uint128::from(5u128);
   let pct_gelotto_shoppe_rewards: Uint128 = Uint128::from(1u128);
   let pct_total = pct_gelotto + pct_gelotto_annual_grand_prize + pct_gelotto_shoppe_rewards;
 
-  let mut game: Game = GAME.load(deps.storage)?;
+  let mut game: Game = query_game(&deps)?;
 
   authorize_and_validate(&game, &env)?;
-  update_game(
-    deps.storage,
-    &mut game,
-    &info.sender,
-    &env.block,
-    lucky_phrase,
-  )?;
+
+  let on_end_lottery_msg = update_game(&mut game, &info.sender, &env.block)?;
+  let old_seed = SEED.load(deps.storage)?;
+  let seed = random::seed::finalize(&old_seed, &info.sender, env.block.height);
+
+  SEED.save(deps.storage, &seed)?;
 
   // get total prize balance
   let jackpot: Coin = match game.cw20_token_address {
@@ -50,7 +49,6 @@ pub fn execute_end_game(
   };
 
   // create submsg to inform lottery registry contract that this game ended
-  let on_end_lottery_msg = LotteryRegistryMsg::OnEndLottery {};
   let on_end_lottery_submsg = SubMsg::new(WasmMsg::Execute {
     contract_addr: LOTTERY_REGISTRY_CONTRACT_ADDRESS.clone().into(),
     msg: to_binary(&on_end_lottery_msg)?,
@@ -121,7 +119,7 @@ pub fn execute_end_game(
     let winnings = ((Uint128::from(100u128) - pct_total) * jackpot.amount) / Uint128::from(100u128);
 
     // find N winners and store in state
-    let n_winners = select_winners(deps.storage, &game, winnings)?;
+    let n_winners = select_winners(deps.storage, &seed, &game, winnings)?;
 
     let response = match game.cw20_token_address {
       Some(cw20_token_address) => {
@@ -230,23 +228,25 @@ fn authorize_and_validate(
 
 /// Update the game's state, effectively "ending" it.
 fn update_game(
-  storage: &mut dyn Storage,
   game: &mut Game,
   sender: &Addr,
   block: &BlockInfo,
-  lucky_phrase: &Option<String>,
-) -> Result<(), ContractError> {
+) -> Result<RegistryExecuteMsg, ContractError> {
   game.status = GameStatus::ENDED;
-  game.seed = random::seed::finalize(game, sender, block.height, lucky_phrase);
   game.ended_at = Some(block.time.clone());
   game.ended_by = Some(sender.clone());
-  GAME.save(storage, &game)?;
-  Ok(())
+
+  Ok(RegistryExecuteMsg::OnEndLottery {
+    status: game.status.clone(),
+    ended_at: game.ended_at.clone(),
+    ended_by: game.ended_by.clone(),
+  })
 }
 
 /// select the winners using game's seed
 fn select_winners(
   storage: &mut dyn Storage,
+  seed: &String,
   game: &Game,
   total_reward: Uint128,
 ) -> Result<u32, ContractError> {
@@ -272,7 +272,7 @@ fn select_winners(
 
   let indices = INDICES.load(storage)?;
   let mut n_found = 0u32;
-  let mut rng = pcg64_from_game_seed(&game.seed)?;
+  let mut rng = pcg64_from_game_seed(seed)?;
   let mut visited: HashSet<u32> = HashSet::with_capacity(n_winners as usize);
 
   while n_found < n_winners {

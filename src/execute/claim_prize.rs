@@ -1,10 +1,11 @@
-use crate::error::ContractError;
-use crate::state::{Game, GameStatus, GAME, WINNERS};
+use crate::state::WINNERS;
+use crate::{error::ContractError, state::query_game};
 use cosmwasm_std::{
   attr, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128,
   WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
+use cw_lottery_lib::game::{Game, GameStatus};
 
 pub fn execute_claim_prize(
   deps: DepsMut,
@@ -12,7 +13,7 @@ pub fn execute_claim_prize(
   info: MessageInfo,
   positions: &Vec<u32>,
 ) -> Result<Response, ContractError> {
-  let game: Game = GAME.load(deps.storage)?;
+  let game: Game = query_game(&deps)?;
 
   // abort if the game is still active
   if game.status != GameStatus::ENDED {

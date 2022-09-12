@@ -1,12 +1,13 @@
 #[cfg(not(feature = "library"))]
 use crate::constants::LOTTERY_REGISTRY_CONTRACT_ADDRESS;
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, LotteryRegistryMsg, MigrateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query;
 use crate::{execute, state};
 use cosmwasm_std::{entry_point, Addr, SubMsg, WasmMsg};
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
+use cw_lottery_lib::msg::RegistryExecuteMsg;
 
 const CONTRACT_NAME: &str = "crates.io:cw-gelotto-game";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -24,18 +25,10 @@ pub fn instantiate(
   let game = state::initialize(deps, &env, &info, &msg)?;
 
   // register lottery with registration contract with SubMsg
-  let on_create_lottery_msg = LotteryRegistryMsg::OnCreateLottery {
-    creator: info.sender.clone(),
+  let on_create_lottery_msg = RegistryExecuteMsg::OnCreateLottery {
     code_id: msg.code_id,
     addr: env.contract.address.clone(),
-    name: game.name,
-    denom: game.denom,
-    cw20_token_address: game.cw20_token_address,
-    ticket_price: game.ticket_price,
-    ticket_count: game.ticket_count,
-    ends_after: game.ends_after,
-    funding_threshold: game.funding_threshold,
-    selection: game.selection,
+    game: game.clone(),
   };
   let on_create_lottery_wasm_msg = WasmMsg::Execute {
     contract_addr: msg
@@ -64,7 +57,7 @@ pub fn execute(
   msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
   match msg {
-    ExecuteMsg::EndGame { lucky_phrase } => execute::end_game(deps, env, info, &lucky_phrase),
+    ExecuteMsg::EndGame {} => execute::end_game(deps, env, info),
     ExecuteMsg::ClaimPrize { positions } => execute::claim_prize(deps, env, info, &positions),
     ExecuteMsg::BuyTickets {
       ticket_count,

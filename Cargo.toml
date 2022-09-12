@@ -26,6 +26,7 @@ overflow-checks = true
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
+cw-lottery-lib = { version = "0.1.0", path = "../cw-lottery-lib" }
 cosmwasm-std = "1.0.0-beta"
 cosmwasm-storage = "1.0.0-beta"
 cw-storage-plus = "0.13.2"

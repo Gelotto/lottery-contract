@@ -1,38 +1,14 @@
 use crate::state::Winner;
-use cosmwasm_std::{Addr, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Uint128};
+use cw_lottery_lib::game::{Style, WinnerSelection};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-/// WinnerSelection defines the number of and manner in which winners are chosen
-/// when a game ends.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum WinnerSelection {
-  Fixed {
-    // Ex: [60, 30, 10] means 60% to 1st place, 30% to 2nd, 10% to 3rd
-    pct_split: Vec<u8>,
-    winner_count: u32,
-    max_winner_count: Option<u32>,
-  },
-  Percent {
-    // Ex: 2 means that max(1, 0.02 * player_count) win
-    pct_player_count: u8,
-  },
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum BackgroundStyle {
   Image { uri: String },
   Color { hex: String },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct Style {
-  background: BackgroundStyle,
-  base_color: String,
-  speed_dial_color: String,
 }
 
 /// Initial contract state.
@@ -57,9 +33,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-  EndGame {
-    lucky_phrase: Option<String>,
-  },
+  EndGame {},
   BuyTickets {
     ticket_count: u32,
     lucky_phrase: Option<String>,
@@ -104,23 +78,6 @@ pub struct GetTicketCountResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum LotteryRegistryMsg {
-  OnCreateLottery {
-    creator: Addr,
-    code_id: u32,
-    addr: Addr,
-    name: Option<String>,
-    denom: String,
-    cw20_token_address: Option<Addr>,
-    ticket_price: Uint128,
-    ticket_count: u32,
-    ends_after: Option<Timestamp>,
-    funding_threshold: Option<Uint128>,
-    selection: WinnerSelection,
-  },
-  OnEndLottery {},
-  OnBuyTickets {
-    new_ticket_count: u32,
-  },
+pub enum RegistryQueryMsg {
+  GetGame {},
 }

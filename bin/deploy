@@ -33,7 +33,7 @@ function deploy() {
   NODE="--node $URL"
   NODECHAIN=" $NODE --chain-id $CHAIN_ID"
   TXFLAG=" $NODECHAIN --gas auto --gas-adjustment 1.3 --fees 1200000$DENOM"
-  CMD="junod tx wasm store $WASM_FILEPATH --from $WALLET --admin $WALLET $TXFLAG --output json -y "
+  CMD="junod tx wasm store $WASM_FILEPATH --from $WALLET $TXFLAG --output json -y "
   
   echo $CMD
   JSON_RESULT=$($CMD)

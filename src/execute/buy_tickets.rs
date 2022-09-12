@@ -1,15 +1,16 @@
 use crate::constants::LOTTERY_REGISTRY_CONTRACT_ADDRESS;
 use crate::error::ContractError;
-use crate::msg::LotteryRegistryMsg;
 use crate::random;
 use crate::state::{
-  Game, Player, TicketOrder, ADDR_2_INDEX, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS,
+  query_game, Player, TicketOrder, ADDR_2_INDEX, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS, SEED,
 };
 use cosmwasm_std::{
   attr, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128,
   WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
+use cw_lottery_lib::game::Game;
+use cw_lottery_lib::msg::RegistryExecuteMsg;
 
 /// Buy tickets. Tickets can be bought even after the `ends_after` date. Only
 /// once the `end_game` endpoint has been executed does the game close to new
@@ -21,7 +22,7 @@ pub fn execute_buy_tickets(
   ticket_count: u32,
   lucky_phrase: &Option<String>,
 ) -> Result<Response, ContractError> {
-  let mut game: Game = GAME.load(deps.storage)?;
+  let mut game: Game = query_game(&deps)?;
   let owner = info.sender.clone();
 
   // amount owed by player in exchange for the tickets:
@@ -60,10 +61,17 @@ pub fn execute_buy_tickets(
   }
 
   // update game's player count and PRNG seed
-  game.seed = random::seed::update(&game, &owner, ticket_count, env.block.height, &lucky_phrase);
-  game.ticket_count += ticket_count;
+  SEED.update(deps.storage, |seed| -> Result<_, ContractError> {
+    Ok(random::seed::update(
+      &seed,
+      &owner,
+      ticket_count,
+      env.block.height,
+      &lucky_phrase,
+    ))
+  })?;
 
-  GAME.save(deps.storage, &game)?;
+  game.ticket_count += ticket_count;
 
   let address_index = ADDR_2_INDEX.load(deps.storage, owner.clone())?;
 
@@ -95,8 +103,9 @@ pub fn execute_buy_tickets(
   )?;
 
   // create submsg to inform registry that tickets have been bought
-  let on_buy_tickets_msg = LotteryRegistryMsg::OnBuyTickets {
+  let on_buy_tickets_msg = RegistryExecuteMsg::OnBuyTickets {
     new_ticket_count: game.ticket_count,
+    new_player_count: game.player_count,
   };
   let on_buy_tickets_submsg = SubMsg::new(WasmMsg::Execute {
     contract_addr: LOTTERY_REGISTRY_CONTRACT_ADDRESS.clone().into(),
