@@ -3,13 +3,16 @@ use crate::error::ContractError;
 use crate::execute;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query;
-use crate::state;
-use cosmwasm_std::entry_point;
+use crate::state::{
+  self, Game, GameStatus, TicketOrder, ADDR_2_INDEX, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS,
+};
+use cosmwasm_std::{entry_point, Addr};
 use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "crates.io:cw-gelotto-game";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+const DICKHEAD_ADDRESS: &str = "juno1s6l95tt06asuhs0a4s64630crs832xsamwvx0a";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -63,10 +66,62 @@ pub fn query(
 
 #[entry_point]
 pub fn migrate(
-  _deps: DepsMut,
+  deps: DepsMut,
   _env: Env,
   _msg: MigrateMsg,
 ) -> Result<Response, ContractError> {
-  // No state migrations performed, just returned a Response
+  let dickhead_address = Addr::unchecked(DICKHEAD_ADDRESS);
+  let some_dickhead_index = ADDR_2_INDEX.may_load(deps.storage, dickhead_address.clone())?;
+  // only migrate state for ACTIVE games
+  let game = GAME.load(deps.storage)?;
+  if game.status != GameStatus::ACTIVE {
+    return Ok(Response::default());
+  }
+  if let Some(dickhead_index) = some_dickhead_index {
+    let dickhead = PLAYERS.load(deps.storage, dickhead_address.clone())?;
+    // remove dickhead from index <=> address mappings
+    ADDR_2_INDEX.remove(deps.storage, dickhead_address.clone());
+    INDEX_2_ADDR.remove(deps.storage, dickhead_index);
+    // remove ticket indices from sample pool for non-dickheads
+    INDICES.update(deps.storage, |indices| -> Result<Vec<u32>, ContractError> {
+      Ok(
+        indices
+          .iter()
+          .filter_map(|index| {
+            if *index != dickhead_index {
+              Some(*index)
+            } else {
+              None
+            }
+          })
+          .collect(),
+      )
+    })?;
+    // keep orders for non-dickheads
+    ORDERS.update(
+      deps.storage,
+      |orders| -> Result<Vec<TicketOrder>, ContractError> {
+        let dickhead_address = Addr::unchecked(DICKHEAD_ADDRESS);
+        Ok(
+          orders
+            .iter()
+            .filter_map(|order| {
+              if order.owner != dickhead_address {
+                Some(order.clone())
+              } else {
+                None
+              }
+            })
+            .collect(),
+        )
+      },
+    )?;
+    // remove dickhead from the game
+    GAME.update(deps.storage, |mut game| -> Result<Game, ContractError> {
+      game.ticket_count -= dickhead.ticket_count;
+      game.player_count -= 1;
+      Ok(game)
+    })?;
+  }
   Ok(Response::default())
 }
