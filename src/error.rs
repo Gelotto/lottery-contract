@@ -32,4 +32,10 @@ pub enum ContractError {
 
   #[error("UnderFundingThreshold")]
   UnderFundingThreshold { funding_threshold: Uint128 },
+
+  #[error("InsufficientFunds")]
+  InsufficientFunds {},
+
+  #[error("ExcessFunds")]
+  ExcessFunds {},
 }

@@ -117,7 +117,23 @@ pub fn execute_buy_tickets(
         ])
     },
     None => {
-      // perform transfer of IBC asset from sender to contract
+      // If we're here, we're using a native asset type, not a CW20 token.
+      // Verify that the exact funds required for the order exist.
+      if let Some(coin) = info
+        .funds
+        .iter()
+        .find(|coin| -> bool { coin.denom == game.denom })
+      {
+        if coin.amount < payment_amount {
+          return Err(ContractError::InsufficientFunds {});
+        } else if coin.amount > payment_amount {
+          return Err(ContractError::ExcessFunds {});
+        }
+      } else {
+        // 0 funds
+        return Err(ContractError::InsufficientFunds {});
+      }
+      // Perform transfer of IBC asset from sender to contract.
       let message = CosmosMsg::Bank(BankMsg::Send {
         to_address: env.contract.address.into_string(),
         amount: vec![Coin::new(payment_amount.u128(), game.denom)],
