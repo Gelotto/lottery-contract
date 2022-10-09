@@ -22,7 +22,7 @@ pub fn execute_buy_tickets(
   ticket_count: u32,
   lucky_phrase: &Option<String>,
 ) -> Result<Response, ContractError> {
-  let mut game: Game = query_game(&deps)?;
+  let mut game: Game = query_game(&deps.querier)?;
   let owner = info.sender.clone();
 
   // amount owed by player in exchange for the tickets:

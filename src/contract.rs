@@ -73,6 +73,7 @@ pub fn query(
   msg: QueryMsg,
 ) -> StdResult<Binary> {
   let result = match msg {
+    QueryMsg::GetRound { round } => to_binary(&query::get_round(deps, round)?),
     QueryMsg::GetWinners {} => to_binary(&query::get_winners(deps)?),
     QueryMsg::GetPlayers {} => to_binary(&query::get_players(deps)?),
     QueryMsg::GetPlayerTicketCount { addr } => {

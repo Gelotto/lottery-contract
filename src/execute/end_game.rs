@@ -6,7 +6,7 @@ use crate::error::ContractError;
 use crate::random;
 use crate::random::pcg64_from_game_seed;
 use crate::state::{
-  query_game, Player, Winner, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS, SEED, WINNERS,
+  query_game, Player, Winner, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS, SEED, STATUS, WINNERS,
 };
 use cosmwasm_std::{
   attr, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response,
@@ -27,7 +27,7 @@ pub fn execute_end_game(
   let pct_gelotto_shoppe_rewards: Uint128 = Uint128::from(1u128);
   let pct_total = pct_gelotto + pct_gelotto_annual_grand_prize + pct_gelotto_shoppe_rewards;
 
-  let mut game: Game = query_game(&deps)?;
+  let mut game: Game = query_game(&deps.querier)?;
 
   authorize_and_validate(&game, &env)?;
 
@@ -36,6 +36,7 @@ pub fn execute_end_game(
   let seed = random::seed::finalize(&old_seed, &info.sender, env.block.height);
 
   SEED.save(deps.storage, &seed)?;
+  STATUS.save(deps.storage, &GameStatus::ENDED)?;
 
   // get total prize balance
   let jackpot: Coin = match game.cw20_token_address {

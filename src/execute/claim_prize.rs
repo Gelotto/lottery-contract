@@ -13,7 +13,7 @@ pub fn execute_claim_prize(
   info: MessageInfo,
   positions: &Vec<u32>,
 ) -> Result<Response, ContractError> {
-  let game: Game = query_game(&deps)?;
+  let game: Game = query_game(&deps.querier)?;
 
   // abort if the game is still active
   if game.status != GameStatus::ENDED {

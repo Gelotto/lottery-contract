@@ -1,6 +1,6 @@
-use crate::state::Winner;
+use crate::state::{TicketOrder, Winner};
 use cosmwasm_std::{Addr, Uint128};
-use cw_lottery_lib::game::{Style, WinnerSelection};
+use cw_lottery_lib::game::{Game, Style, WinnerSelection};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -50,6 +50,7 @@ pub enum QueryMsg {
   GetWinners {},
   GetPlayers {},
   GetPlayerTicketCount { addr: Addr },
+  GetRound { round: u32 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -75,6 +76,13 @@ pub struct GetPlayersResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GetTicketCountResponse {
   pub ticket_count: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct GameRound {
+  pub game: Game,
+  pub activity: Vec<TicketOrder>,
+  pub winners: Vec<Winner>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

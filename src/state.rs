@@ -1,7 +1,7 @@
 use crate::msg::{InstantiateMsg, RegistryQueryMsg};
 use crate::random;
 use crate::{constants::LOTTERY_REGISTRY_CONTRACT_ADDRESS, error::ContractError};
-use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, StdResult, Uint128};
+use cosmwasm_std::{Addr, DepsMut, Env, MessageInfo, QuerierWrapper, StdResult, Uint128};
 use cw_lottery_lib::game::{Game, GameStatus};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
@@ -29,6 +29,7 @@ pub struct Winner {
   pub claim_amount: Uint128,
 }
 
+pub const STATUS: Item<GameStatus> = Item::new("status");
 pub const SEED: Item<String> = Item::new("seed");
 pub const ORDERS: Item<Vec<TicketOrder>> = Item::new("orders");
 pub const WINNERS: Map<u32, Winner> = Map::new("winners");
@@ -67,6 +68,7 @@ pub fn initialize(
     ended_by: None,
   };
 
+  STATUS.save(deps.storage, &game.status)?;
   SEED.save(deps.storage, &random::seed::init(&msg.id, env.block.height))?;
   ORDERS.save(deps.storage, &vec![])?;
   INDICES.save(deps.storage, &vec![])?;
@@ -74,8 +76,8 @@ pub fn initialize(
   Ok(game)
 }
 
-pub fn query_game(deps: &DepsMut) -> StdResult<Game> {
-  deps.querier.query_wasm_smart(
+pub fn query_game(querier: &QuerierWrapper) -> StdResult<Game> {
+  querier.query_wasm_smart(
     LOTTERY_REGISTRY_CONTRACT_ADDRESS,
     &RegistryQueryMsg::GetGame {},
   )
