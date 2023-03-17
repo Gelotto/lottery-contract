@@ -1,12 +1,10 @@
 [package]
-name = "cw-gelotto-ibc-lottery-smart-contract"
-version = "0.10.2"
+name = "cw-lottery"
+version = "1.0.0"
 edition = "2018"
 license = "Apache-2.0"
 description = "Gelotto IBC Lottery CosmWasm Smart Contract"
 repository = "https://github.com/dgabriele/cw-contract.git"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -24,19 +22,18 @@ overflow-checks = true
 
 [features]
 backtraces = ["cosmwasm-std/backtraces"]
+library = []
 
 [dependencies]
-cosmwasm-std = "1.0.0-beta"
-cosmwasm-storage = "1.0.0-beta"
-cw-storage-plus = "0.13.2"
-cw2 = "0.13.2"
-cw20 = { version = "0.14.0" }
-schemars = "0.8"
-thiserror = "1.0.23"
-serde = { version = "1.0.103", default-features = false, features = ["derive"] }
+cosmwasm-std = "1.1.1"
+cw-storage-plus = "1.0.1"
+cw2 = "1.0.1"
+cw20 = { version = "1.0.1" }
+schemars = "0.8.1"
+thiserror = "1.0.38"
+serde = { version = "1.0.152", default-features = false, features = ["derive"] }
 sha2 = "0.10.2"
 base64ct = "1.5.0"
 
 [dev-dependencies]
-cosmwasm-vm = "1.0.0-beta"
-cosmwasm-schema = "1.0.0-beta"
+cosmwasm-schema = "1.2.1"

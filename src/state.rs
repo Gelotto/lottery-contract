@@ -63,6 +63,7 @@ pub const PLAYERS: Map<Addr, Player> = Map::new("players");
 pub const ADDR_2_INDEX: Map<Addr, u32> = Map::new("addr_2_index");
 pub const INDEX_2_ADDR: Map<u32, Addr> = Map::new("index_2_addr");
 pub const INDICES: Item<Vec<u32>> = Item::new("indices");
+pub const PREV_HEIGHT: Item<u64> = Item::new("prev_height");
 
 /// Initialize contract state data.
 pub fn initialize(

@@ -1,11 +1,12 @@
 network ?= devnet  # network := devnet|mainnet|testnet
 sender ?= juno12jpu0gqxtslzy3lsw3xm86euqn83mdas6mflme
-wasm_filename ?= 
+wasm_filename ?= cw_lottery.wasm
+
 build:
 	./bin/build
 
 deploy:
-	./bin/deploy ./artifacts/cw_gelotto_ibc_lottery_smart_contract.wasm $(network) $(sender)
+	./bin/deploy ./artifacts/$(wasm_filename) $(network) $(sender)
 
 # instantiate last contract to be deployed
 instantiate:

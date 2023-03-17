@@ -1,11 +1,10 @@
 use crate::error::ContractError;
 use crate::random;
 use crate::state::{
-  Game, Player, TicketOrder, ADDR_2_INDEX, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS,
+  Game, Player, TicketOrder, ADDR_2_INDEX, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS, PREV_HEIGHT,
 };
 use cosmwasm_std::{
-  attr, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128,
-  WasmMsg,
+  attr, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 
@@ -27,21 +26,17 @@ pub fn execute_buy_tickets(
 
   if PLAYERS.has(deps.storage, owner.clone()) {
     // update player's ticket count
-    PLAYERS.update(
-      deps.storage,
-      owner.clone(),
-      |p| -> Result<_, ContractError> {
-        let mut player = p.unwrap_or_else(|| Player { ticket_count: 0 });
-        if let Some(max_tickets_per_player) = game.max_tickets_per_player {
-          // don't let player buy more tickets than max allowed, unless N/A
-          if player.ticket_count + ticket_count > max_tickets_per_player {
-            return Err(ContractError::ExceededMaxTicketsPerPlayer {});
-          }
+    PLAYERS.update(deps.storage, owner.clone(), |p| -> Result<_, ContractError> {
+      let mut player = p.unwrap_or_else(|| Player { ticket_count: 0 });
+      if let Some(max_tickets_per_player) = game.max_tickets_per_player {
+        // don't let player buy more tickets than max allowed, unless N/A
+        if player.ticket_count + ticket_count > max_tickets_per_player {
+          return Err(ContractError::ExceededMaxTicketsPerPlayer {});
         }
-        player.ticket_count += ticket_count;
-        Ok(player)
-      },
-    )?;
+      }
+      player.ticket_count += ticket_count;
+      Ok(player)
+    })?;
   } else {
     // insert Player with initial ticket count
     // don't let player buy more tickets than max allowed, unless N/A
@@ -65,15 +60,12 @@ pub fn execute_buy_tickets(
 
   let address_index = ADDR_2_INDEX.load(deps.storage, owner.clone())?;
 
-  INDICES.update(
-    deps.storage,
-    |mut indices: Vec<u32>| -> Result<_, ContractError> {
-      for _ in 0..ticket_count {
-        indices.push(address_index)
-      }
-      Ok(indices)
-    },
-  )?;
+  INDICES.update(deps.storage, |mut indices: Vec<u32>| -> Result<_, ContractError> {
+    for _ in 0..ticket_count {
+      indices.push(address_index)
+    }
+    Ok(indices)
+  })?;
 
   ORDERS.update(
     deps.storage,
@@ -91,6 +83,8 @@ pub fn execute_buy_tickets(
       Ok(orders)
     },
   )?;
+
+  PREV_HEIGHT.save(deps.storage, &env.block.height)?;
 
   // transfer payment from player to the contract
   let response = match game.cw20_token_address {
@@ -119,11 +113,7 @@ pub fn execute_buy_tickets(
     None => {
       // If we're here, we're using a native asset type, not a CW20 token.
       // Verify that the exact funds required for the order exist.
-      if let Some(coin) = info
-        .funds
-        .iter()
-        .find(|coin| -> bool { coin.denom == game.denom })
-      {
+      if let Some(coin) = info.funds.iter().find(|coin| -> bool { coin.denom == game.denom }) {
         if coin.amount < payment_amount {
           return Err(ContractError::InsufficientFunds {});
         } else if coin.amount > payment_amount {

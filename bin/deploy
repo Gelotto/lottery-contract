@@ -33,7 +33,7 @@ function deploy() {
   NODE="--node $URL"
   NODECHAIN=" $NODE --chain-id $CHAIN_ID"
   TXFLAG=" $NODECHAIN --gas auto --gas-adjustment 1.3 --fees 1200000$DENOM"
-  CMD="junod tx wasm store $WASM_FILEPATH --from $WALLET --admin $WALLET $TXFLAG --output json -y "
+  CMD="junod tx wasm store $WASM_FILEPATH --from $WALLET $TXFLAG --output json -y "
   
   echo $CMD
   JSON_RESULT=$($CMD)
@@ -45,7 +45,7 @@ function deploy() {
   echo "$UPLOADTX"
 
 	CODE_ID=""
-  CODE_ID_JSON_PATH=".logs[0].events[-1].attributes[0].value"
+  CODE_ID_JSON_PATH=".logs[0].events[-1].attributes[-1].value"
   while [[ $CODE_ID == "" ]]
   do 
       sleep 3  # wait for wasm store command to complete
@@ -58,7 +58,7 @@ function deploy() {
   # save to CODE_ID_FILENAME in release directory
   mkdir -p $RELEASE_DIR
   echo $CODE_ID > "$RELEASE_DIR/$CODE_ID_FILENAME"
-  cp $WASM_FILEPATH "$RELEASE_DIR/$"
+  cp $WASM_FILEPATH $RELEASE_DIR/
 }
 
 VALIDATOR_DOCKER_CONTAINER_NAME="juno_node_1"
@@ -82,7 +82,7 @@ function deploy_local() {
 
   mkdir -p $RELEASE_DIR
 
-  CODE_ID=$(echo "$RESP" | jq -r '.logs[0].events[-1].attributes[0].value')
+  CODE_ID=$(echo "$RESP" | jq -r '.logs[0].events[-1].attributes[-1].value')
   echo "$CODE_ID" >"$RELEASE_DIR/$CODE_ID_FILENAME"
 
   cp $WASM_FILEPATH "$RELEASE_DIR/$WASM_FILENAME"

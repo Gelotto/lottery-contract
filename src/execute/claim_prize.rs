@@ -1,8 +1,7 @@
 use crate::error::ContractError;
 use crate::state::{Game, GameStatus, GAME, WINNERS};
 use cosmwasm_std::{
-  attr, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128,
-  WasmMsg,
+  attr, to_binary, BankMsg, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 

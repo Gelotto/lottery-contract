@@ -4,8 +4,8 @@ use std::fs::create_dir_all;
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 use cosmwasm_std::Coin;
 
-use cw_gelotto_ibc_lottery_smart_contract::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use cw_gelotto_ibc_lottery_smart_contract::state::{Game, GameStatus, Player, TicketOrder, Winner};
+use cw_lottery::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw_lottery::state::{Game, GameStatus, Player, TicketOrder, Winner};
 
 fn main() {
   let mut out_dir = current_dir().unwrap();

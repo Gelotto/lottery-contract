@@ -20,7 +20,6 @@ pub enum WinnerSelection {
   },
 }
 
-/// Initial contract state.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
   pub id: String,
@@ -35,7 +34,6 @@ pub struct InstantiateMsg {
   pub funding_threshold: Option<Uint128>,
 }
 
-/// Executable contract endpoints.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
@@ -51,7 +49,6 @@ pub enum ExecuteMsg {
   },
 }
 
-/// Custom contract query endpoints.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
@@ -61,7 +58,6 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
 pub struct MigrateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

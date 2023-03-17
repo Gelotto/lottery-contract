@@ -1,16 +1,16 @@
 use crate::constants::{
-  GELOTTO_ADDR, GELOTTO_ANNUAL_GRAND_PRIZE_ADDR, GELOTTO_SHOPPE_REWARDS_ADDR,
+  GELOTTO_ADDR, GELOTTO_ANNUAL_PRIZE_ADDR, GELOTTO_NFT_SERIES_1_REWARDS_ADDR, GELOTTO_NFT_SERIES_2_REWARDS_ADDR,
 };
 use crate::error::ContractError;
 use crate::msg::WinnerSelection;
 use crate::random;
 use crate::random::pcg64_from_game_seed;
 use crate::state::{
-  Game, GameStatus, Player, Winner, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS, WINNERS,
+  Game, GameStatus, Player, Winner, GAME, INDEX_2_ADDR, INDICES, ORDERS, PLAYERS, PREV_HEIGHT, WINNERS,
 };
 use cosmwasm_std::{
-  attr, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response,
-  Storage, SubMsg, Uint128, WasmMsg,
+  attr, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, DepsMut, Env, MessageInfo, Response, Storage, Uint128,
+  WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use std::collections::HashSet;
@@ -21,21 +21,26 @@ pub fn execute_end_game(
   info: MessageInfo,
   lucky_phrase: &Option<String>,
 ) -> Result<Response, ContractError> {
-  let pct_gelotto: Uint128 = Uint128::from(4u128);
-  let pct_gelotto_annual_grand_prize: Uint128 = Uint128::from(5u128);
-  let pct_gelotto_shoppe_rewards: Uint128 = Uint128::from(1u128);
-  let pct_total = pct_gelotto + pct_gelotto_annual_grand_prize + pct_gelotto_shoppe_rewards;
-
   let mut game: Game = GAME.load(deps.storage)?;
 
   authorize_and_validate(&game, &env)?;
-  update_game(
-    deps.storage,
-    &mut game,
-    &info.sender,
-    &env.block,
-    lucky_phrase,
-  )?;
+
+  let orders = ORDERS.load(deps.storage)?;
+
+  // Mark this end_game request as suspect if it's on the same block as the
+  // latest buy_tickets execution. we can't allow this because an adversary
+  // could employ a brute force attack to manipulate the PRNG seed in
+  // buy_tickets, such that end_game always results in their wallet being drawn
+  // as a winner.
+  let mut is_suspect = false;
+  if orders.len() > 1 {
+    let has_same_block_height = PREV_HEIGHT.load(deps.storage)? == env.block.height;
+    if has_same_block_height {
+      is_suspect = true;
+    }
+  }
+
+  update_game(deps.storage, &mut game, &info.sender, &env.block, lucky_phrase)?;
 
   // get total prize balance
   let jackpot: Coin = match game.cw20_token_address {
@@ -77,15 +82,11 @@ pub fn execute_end_game(
             msg: to_binary(&transfer)?,
             funds: vec![],
           };
-          return Ok(
-            Response::new()
-              .add_submessage(SubMsg::new(execute_msg))
-              .add_attributes(vec![
-                attr("end_game", jackpot.amount.clone()),
-                attr("to", info.sender.clone()),
-                attr("winner_count", "1"),
-              ]),
-          );
+          return Ok(Response::new().add_message(execute_msg).add_attributes(vec![
+            attr("end_game", jackpot.amount.clone()),
+            attr("to", info.sender.clone()),
+            attr("winner_count", "1"),
+          ]));
         },
         None => {
           // transfer IBC asset
@@ -100,88 +101,67 @@ pub fn execute_end_game(
         },
       }
     } else {
-      return Ok(
-        Response::new().add_attributes(vec![attr("action", "end_game"), attr("winner_count", "0")]),
-      );
+      return Ok(Response::new().add_attributes(vec![attr("action", "end_game"), attr("winner_count", "0")]));
     }
   } else {
+    let owner = game.owner.as_str();
+    let pct_gelotto: Uint128 = Uint128::from(4u128);
+    let pct_gelotto_annual_grand_prize: Uint128 = Uint128::from(3u128);
+    let pct_nft_series_1_rewards: Uint128 = Uint128::from(1u128);
+    let pct_nft_series_2_rewards: Uint128 = Uint128::from(1u128);
+    let pct_owner: Uint128 = Uint128::from(1u128);
+    let pct_total_royalties: Uint128 =
+      pct_gelotto + pct_gelotto_annual_grand_prize + pct_nft_series_1_rewards + pct_nft_series_2_rewards + pct_owner;
+
     // total amount split among winning wallets. this should equal 90% of the
     // total amount owned by the contract.
-    let winnings = ((Uint128::from(100u128) - pct_total) * jackpot.amount) / Uint128::from(100u128);
+    let winnings = ((Uint128::from(100u128) - pct_total_royalties) * jackpot.amount) / Uint128::from(100u128);
 
     // find N winners and store in state
-    let n_winners = select_winners(deps.storage, &game, winnings)?;
+    let n_winners = select_winners(&info.sender, deps.storage, &game, winnings, is_suspect)?;
 
+    let royalties = vec![
+      (GELOTTO_ADDR, pct_gelotto),
+      (GELOTTO_ANNUAL_PRIZE_ADDR, pct_gelotto_annual_grand_prize),
+      (GELOTTO_NFT_SERIES_1_REWARDS_ADDR, pct_nft_series_1_rewards),
+      (GELOTTO_NFT_SERIES_2_REWARDS_ADDR, pct_nft_series_2_rewards),
+      (owner, pct_owner),
+    ];
+
+    // build response with royalty send msgs
     let response = match game.cw20_token_address {
       Some(cw20_token_address) => {
-        // create transfer to Gelotto
-        let transfer1 = Cw20ExecuteMsg::Transfer {
-          recipient: GELOTTO_ADDR.clone().into(),
-          amount: (pct_gelotto * jackpot.amount / Uint128::from(100u128)).into(),
-        };
-        let execute_msg1 = WasmMsg::Execute {
-          contract_addr: cw20_token_address.clone().into(),
-          msg: to_binary(&transfer1)?,
-          funds: vec![],
-        };
-        // create transfer to Gelotto Annaul Grand Prize account
-        let transfer2 = Cw20ExecuteMsg::Transfer {
-          recipient: GELOTTO_ANNUAL_GRAND_PRIZE_ADDR.clone().into(),
-          amount: (pct_gelotto_annual_grand_prize * jackpot.amount / Uint128::from(100u128)).into(),
-        };
-        let execute_msg2 = WasmMsg::Execute {
-          contract_addr: cw20_token_address.clone().into(),
-          msg: to_binary(&transfer2)?,
-          funds: vec![],
-        };
-        // create transfer to Gelotto Shopee Rewards account
-        let transfer3 = Cw20ExecuteMsg::Transfer {
-          recipient: GELOTTO_SHOPPE_REWARDS_ADDR.clone().into(),
-          amount: (pct_gelotto_shoppe_rewards * jackpot.amount / Uint128::from(100u128)).into(),
-        };
-        let execute_msg3 = WasmMsg::Execute {
-          contract_addr: cw20_token_address.clone().into(),
-          msg: to_binary(&transfer3)?,
-          funds: vec![],
-        };
-
-        Response::new()
-          .add_submessage(SubMsg::new(execute_msg1))
-          .add_submessage(SubMsg::new(execute_msg2))
-          .add_submessage(SubMsg::new(execute_msg3))
-          .add_attributes(vec![
-            attr("action", "end_game"),
-            attr("winner_count", n_winners.to_string()),
-          ])
+        let mut wasm_transfer_msgs: Vec<WasmMsg> = Vec::with_capacity(4);
+        for (recipient, pct) in royalties.iter() {
+          wasm_transfer_msgs.push(WasmMsg::Execute {
+            contract_addr: cw20_token_address.clone().into(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+              recipient: recipient.clone().into(),
+              amount: (pct * jackpot.amount / Uint128::from(100u128)).into(),
+            })?,
+            funds: vec![],
+          });
+        }
+        Response::new().add_messages(wasm_transfer_msgs).add_attributes(vec![
+          attr("action", "end_game"),
+          attr("winner_count", n_winners.to_string()),
+        ])
       },
       None => {
-        Response::new()
-          .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: GELOTTO_SHOPPE_REWARDS_ADDR.clone().into(),
+        let mut cosmos_send_msgs: Vec<CosmosMsg> = Vec::with_capacity(4);
+        for (recipient, pct) in royalties.iter() {
+          cosmos_send_msgs.push(CosmosMsg::Bank(BankMsg::Send {
+            to_address: recipient.clone().into(),
             amount: vec![Coin::new(
-              (pct_gelotto_shoppe_rewards * jackpot.amount / Uint128::from(100u128)).into(),
+              (pct * jackpot.amount / Uint128::from(100u128)).into(),
               game.denom.clone(),
             )],
-          }))
-          .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: GELOTTO_ANNUAL_GRAND_PRIZE_ADDR.clone().into(),
-            amount: vec![Coin::new(
-              (pct_gelotto_annual_grand_prize * jackpot.amount / Uint128::from(100u128)).into(),
-              game.denom.clone(),
-            )],
-          }))
-          // transfer Gelotto's 10% to its gaming fund
-          .add_message(CosmosMsg::Bank(BankMsg::Send {
-            to_address: GELOTTO_ADDR.clone().into(),
-            amount: vec![Coin::new(
-              (pct_gelotto * jackpot.amount / Uint128::from(100u128)).into(),
-              game.denom.clone(),
-            )],
-          }))
-          .add_attributes(vec![
-            attr("action", "end_game"),
-            attr("winner_count", n_winners.to_string()),
-          ])
+          }));
+        }
+        Response::new().add_messages(cosmos_send_msgs).add_attributes(vec![
+          attr("action", "end_game"),
+          attr("winner_count", n_winners.to_string()),
+        ])
       },
     };
 
@@ -233,9 +213,11 @@ fn update_game(
 
 /// select the winners using game's seed
 fn select_winners(
+  sender: &Addr,
   storage: &mut dyn Storage,
   game: &Game,
   total_reward: Uint128,
+  is_suspect: bool,
 ) -> Result<u32, ContractError> {
   let (n_winners, pct_split) = match game.selection.clone() {
     WinnerSelection::Fixed {
@@ -268,6 +250,9 @@ fn select_winners(
     let already_selected = visited.contains(&address_index);
     if !game.has_distinct_winners || !already_selected {
       let addr = INDEX_2_ADDR.load(storage, address_index)?;
+      if addr == *sender && is_suspect {
+        return Err(ContractError::NotAuthorized {});
+      }
       let player = PLAYERS.load(storage, addr.clone())?;
       let claim_amount = allocate_reward(game, total_reward, n_found, &pct_split);
       visited.insert(address_index);
