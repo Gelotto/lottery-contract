@@ -1,5 +1,6 @@
 use crate::constants::{
   GELOTTO_ADDR, GELOTTO_ANNUAL_PRIZE_ADDR, GELOTTO_NFT_SERIES_1_REWARDS_ADDR, GELOTTO_NFT_SERIES_2_REWARDS_ADDR,
+  GELOTTO_OWNER_REWARDS_ADDR,
 };
 use crate::error::ContractError;
 use crate::msg::WinnerSelection;
@@ -104,18 +105,25 @@ pub fn execute_end_game(
       return Ok(Response::new().add_attributes(vec![attr("action", "end_game"), attr("winner_count", "0")]));
     }
   } else {
-    let owner = game.owner.as_str();
-    let pct_gelotto: Uint128 = Uint128::from(4u128);
-    let pct_gelotto_annual_grand_prize: Uint128 = Uint128::from(3u128);
-    let pct_nft_series_1_rewards: Uint128 = Uint128::from(1u128);
-    let pct_nft_series_2_rewards: Uint128 = Uint128::from(1u128);
-    let pct_owner: Uint128 = Uint128::from(1u128);
-    let pct_total_royalties: Uint128 =
-      pct_gelotto + pct_gelotto_annual_grand_prize + pct_nft_series_1_rewards + pct_nft_series_2_rewards + pct_owner;
+    let game_admin = game.owner.as_str();
+    let pct_gelotto: Uint128 = Uint128::from(25u128);
+    let pct_gelotto_annual_grand_prize: Uint128 = Uint128::from(35u128);
+    let pct_nft_series_1_rewards: Uint128 = Uint128::from(10u128);
+    let pct_nft_series_2_rewards: Uint128 = Uint128::from(10u128);
+    let pct_admin: Uint128 = Uint128::from(10u128);
+    let pct_owner_rewards: Uint128 = Uint128::from(10u128);
+    let pct_total_royalties: Uint128 = pct_gelotto
+      + pct_gelotto_annual_grand_prize
+      + pct_nft_series_1_rewards
+      + pct_nft_series_2_rewards
+      + pct_admin
+      + pct_owner_rewards;
 
     // total amount split among winning wallets. this should equal 90% of the
     // total amount owned by the contract.
-    let winnings = ((Uint128::from(100u128) - pct_total_royalties) * jackpot.amount) / Uint128::from(100u128);
+    let winnings = jackpot
+      .amount
+      .multiply_ratio(Uint128::from(1000u128) - pct_total_royalties, Uint128::from(1000u128));
 
     // find N winners and store in state
     let n_winners = select_winners(&info.sender, deps.storage, &game, winnings, is_suspect)?;
@@ -125,7 +133,8 @@ pub fn execute_end_game(
       (GELOTTO_ANNUAL_PRIZE_ADDR, pct_gelotto_annual_grand_prize),
       (GELOTTO_NFT_SERIES_1_REWARDS_ADDR, pct_nft_series_1_rewards),
       (GELOTTO_NFT_SERIES_2_REWARDS_ADDR, pct_nft_series_2_rewards),
-      (owner, pct_owner),
+      (GELOTTO_OWNER_REWARDS_ADDR, pct_owner_rewards),
+      (game_admin, pct_admin),
     ];
 
     // build response with royalty send msgs
@@ -137,7 +146,7 @@ pub fn execute_end_game(
             contract_addr: cw20_token_address.clone().into(),
             msg: to_binary(&Cw20ExecuteMsg::Transfer {
               recipient: recipient.clone().into(),
-              amount: (pct * jackpot.amount / Uint128::from(100u128)).into(),
+              amount: jackpot.amount.multiply_ratio(*pct, Uint128::from(1000u128)).into(),
             })?,
             funds: vec![],
           });
@@ -153,7 +162,7 @@ pub fn execute_end_game(
           cosmos_send_msgs.push(CosmosMsg::Bank(BankMsg::Send {
             to_address: recipient.clone().into(),
             amount: vec![Coin::new(
-              (pct * jackpot.amount / Uint128::from(100u128)).into(),
+              jackpot.amount.multiply_ratio(*pct, Uint128::from(1000u128)).into(),
               game.denom.clone(),
             )],
           }));
